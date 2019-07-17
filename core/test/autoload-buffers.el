@@ -20,28 +20,28 @@
   (with-temp-buffers!! (a b c)
     (should (cl-every #'buffer-live-p (buffer-list)))
     (should (equal (buffer-list) (list a b c)))
-    (dolist (buf (list (cons a doom-emacs-dir)
-                       (cons b doom-emacs-dir)
+    (dolist (buf (list (cons a enfer-emacs-dir)
+                       (cons b enfer-emacs-dir)
                        (cons c "/tmp/")))
       (with-current-buffer (car buf)
         (setq-local default-directory (cdr buf))))
     (projectile-mode +1)
     (with-current-buffer a
       ;; should produce all buffers
-      (let ((buffers (doom-buffer-list)))
+      (let ((buffers (enfer-buffer-list)))
         (should (cl-every (lambda (x) (memq x buffers)) (list a b c))))
       ;; should produce only project buffers
-      (let ((buffers (doom-project-buffer-list)))
+      (let ((buffers (enfer-project-buffer-list)))
         (should (cl-every (lambda (x) (memq x buffers)) (list a b)))
         (should-not (memq c buffers))))
     ;; If no project is available, just get all buffers
     (with-current-buffer c
-      (let ((buffers (doom-project-buffer-list)))
+      (let ((buffers (enfer-project-buffer-list)))
         (should (cl-every (lambda (x) (memq x buffers)) (list a b c)))))
     (projectile-mode -1)))
 
 (def-test! real-buffers
-  (let (doom-real-buffer-functions)
+  (let (enfer-real-buffer-functions)
     (with-temp-buffers!! (a b c d)
       (dolist (buf (list a b))
         (with-current-buffer buf
@@ -49,19 +49,19 @@
       (with-current-buffer c
         (rename-buffer "*C*"))
       (with-current-buffer d
-        (doom-popup-mode +1))
-      (should (doom-real-buffer-p a))
-      (should (doom-real-buffer-p b))
-      (should-not (doom-real-buffer-p c))
-      (should-not (doom-real-buffer-p d))
-      (let ((buffers (doom-real-buffer-list)))
+        (enfer-popup-mode +1))
+      (should (enfer-real-buffer-p a))
+      (should (enfer-real-buffer-p b))
+      (should-not (enfer-real-buffer-p c))
+      (should-not (enfer-real-buffer-p d))
+      (let ((buffers (enfer-real-buffer-list)))
         (should (= (length buffers) 2))
         (should (cl-every  (lambda (x) (memq x buffers)) (list a b)))
         (should (cl-notany (lambda (x) (memq x buffers)) (list c d)))))))
 
-;; `doom-visible-windows'
-;; `doom-visible-buffers'
-;; `doom-buried-buffers'
+;; `enfer-visible-windows'
+;; `enfer-visible-buffers'
+;; `enfer-buried-buffers'
 (def-test! visible-buffers-and-windows
   (with-temp-buffers!! (a b c d)
     (switch-to-buffer a)
@@ -71,21 +71,21 @@
     (switch-to-buffer b)
     (should (eq (current-buffer) b))
     (should (eq (selected-window) (get-buffer-window b)))
-    (should (cl-intersection (list a b) (doom-visible-buffers)))
-    (should (cl-intersection (list c d) (doom-buried-buffers)))
+    (should (cl-intersection (list a b) (enfer-visible-buffers)))
+    (should (cl-intersection (list c d) (enfer-buried-buffers)))
     (should (cl-intersection (mapcar #'get-buffer-window (list a b))
-                             (doom-visible-windows)))))
+                             (enfer-visible-windows)))))
 
-;; `doom-matching-buffers'
+;; `enfer-matching-buffers'
 (def-test! matching-buffers
   (with-temp-buffers!! (a b c)
-    (let ((buffers (doom-matching-buffers "^[ac]$")))
+    (let ((buffers (enfer-matching-buffers "^[ac]$")))
       (should (= 2 (length buffers)))
       (should (cl-every #'bufferp buffers))
       (should (cl-every (lambda (x) (memq x buffers)) (list a c)))
-      (should (equal buffers (doom-matching-buffers "^[ac]$"))))))
+      (should (equal buffers (enfer-matching-buffers "^[ac]$"))))))
 
-;; `doom-buffers-in-mode'
+;; `enfer-buffers-in-mode'
 (def-test! buffers-in-mode
   (with-temp-buffers!! (a b c d e)
     (dolist (buf (list a b))
@@ -94,24 +94,24 @@
     (dolist (buf (list c d e))
       (with-current-buffer buf
         (text-mode)))
-    (let ((el-buffers  (doom-buffers-in-mode 'emacs-lisp-mode))
-          (txt-buffers (doom-buffers-in-mode 'text-mode)))
+    (let ((el-buffers  (enfer-buffers-in-mode 'emacs-lisp-mode))
+          (txt-buffers (enfer-buffers-in-mode 'text-mode)))
       (should (cl-every #'buffer-live-p (append el-buffers txt-buffers)))
       (should (= 2 (length el-buffers)))
       (should (= 3 (length txt-buffers))))))
 
-;; `doom-kill-buffer'
+;; `enfer-kill-buffer'
 (def-test! kill-buffer
   (with-temp-buffers!! (a b)
-    (doom-kill-buffer a)
+    (enfer-kill-buffer a)
     (should-not (buffer-live-p a))
     ;; modified buffer
     (with-current-buffer b
       (set-buffer-modified-p t))
-    (doom-kill-buffer b t)
+    (enfer-kill-buffer b t)
     (should-not (buffer-live-p a))))
 
-;; `doom--cycle-real-buffers'
+;; `enfer--cycle-real-buffers'
 (def-test! kill-buffer-then-show-real-buffer
   (with-temp-buffers!! (a b c d)
     (dolist (buf (list a b d))
@@ -121,15 +121,15 @@
     (switch-to-buffer a)
     (should (eq (current-buffer) a))
     (should (eq (selected-window) (get-buffer-window a)))
-    (should (doom-kill-buffer a))
+    (should (enfer-kill-buffer a))
     ;; eventually end up in the fallback buffer
-    (let ((fallback (doom-fallback-buffer)))
+    (let ((fallback (enfer-fallback-buffer)))
       (while (not (eq (current-buffer) fallback))
-        (should (doom-real-buffer-p))
-        (doom-kill-buffer))
+        (should (enfer-real-buffer-p))
+        (enfer-kill-buffer))
       (should (eq (current-buffer) fallback)))))
 
-;; TODO doom/kill-all-buffers
-;; TODO doom/kill-other-buffers
-;; TODO doom/kill-matching-buffers
-;; TODO doom/cleanup-session
+;; TODO enfer/kill-all-buffers
+;; TODO enfer/kill-other-buffers
+;; TODO enfer/kill-matching-buffers
+;; TODO enfer/cleanup-session

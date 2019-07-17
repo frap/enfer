@@ -1,48 +1,186 @@
 ;;; core-ui.el -*- lexical-binding: t; -*-
 
-(defvar doom-fringe-size '4
-  "Default fringe width.")
+;;
+;;; Variables
 
-(defvar doom-theme nil
-  "A symbol representing the color theme to load.")
+(defvar enfer-theme nil
+  "A symbol representing the Emacs theme to load at startup.
 
-(defvar doom-font nil
-  "The default font to use. Expects a `font-spec'.")
+This is changed by `load-theme'.")
 
-(defvar doom-big-font nil
-  "The default large font to use when `doom-big-font-mode' is enabled. Expects a
-`font-spec'.")
+(defvar enfer-font nil
+  "The default font to use.
 
-(defvar doom-variable-pitch-font nil
-  "The default font to use for variable-pitch text. Expects a `font-spec'.")
+Expects either a `font-spec', font object, an XFT font string or an XLFD font
+string.
 
-(defvar doom-unicode-font nil
-  "Fallback font for unicode glyphs. Is ignored if :feature unicode is active.
-Expects a `font-spec'.")
+This affects the `default' and `fixed-pitch' faces.
 
-(defvar doom-major-mode-names
-  '((sh-mode . "sh")
-    (emacs-lisp-mode . "Elisp"))
-  "An alist mapping major modes symbols to strings (or functions that will
-return a string). This changes the 'long' name of a major-mode, allowing for
-shorter major mode name in the mode-line. See `doom|set-mode-name'.")
+Examples:
+  (setq enfer-font (font-spec :family \"Fira Mono\" :size 12))
+  (setq enfer-font \"Terminus (TTF):pixelsize=12:antialias=off\")")
+
+(defvar enfer-variable-pitch-font nil
+  "The font to use for variable-pitch text.
+
+Expects either a `font-spec', font object, a XFT font string or XLFD string. See
+`enfer-font' for examples.
+
+It is recommended you don't set specify a font-size, as to inherit `enfer-font's
+size.")
+
+(defvar enfer-serif-font nil
+  "The default font to use for the `fixed-pitch-serif' face.
+
+Expects either a `font-spec', font object, a XFT font string or XLFD string. See
+`enfer-font' for examples.
+
+It is recommended you don't set specify a font-size, as to inherit `enfer-font's
+size.")
+
+(defvar enfer-unicode-font
+  (if IS-MAC
+      (font-spec :family "Apple Color Emoji")
+    (font-spec :family "Symbola"))
+  "Fallback font for unicode glyphs.
+
+It defaults to Apple Color Emoji on MacOS and Symbola on Linux. Expects either a
+`font-spec', font object, a XFT font string or XLFD string. See `enfer-font' for
+examples.
+
+It is recommended you don't set specify a font-size, as to inherit `enfer-font's
+size.")
+
+(defvar enfer--prefer-theme-elc nil
+  "If non-nil, `load-theme' will prefer the compiled theme (unlike its default
+behavior). Do not set this directly, this is let-bound in `enfer|init-theme'.")
 
 
-;; Hook(s)
-(defvar doom-init-ui-hook nil
-  "List of hooks to run when the theme and font is initialized (or reloaded with
-`doom//reload-theme').")
+;;
+;;; Custom hooks
 
+(defvar enfer-init-ui-hook nil
+  "List of hooks to run when the UI has been initialized.")
+
+(defvar enfer-load-theme-hook nil
+  "Hook run after the theme is loaded with `load-theme' or reloaded with
+`enfer/reload-theme'.")
+
+(defvar enfer-switch-buffer-hook nil
+  "A list of hooks run after changing the current buffer.")
+
+(defvar enfer-switch-window-hook nil
+  "A list of hooks run after changing the focused windows.")
+
+(defvar enfer-switch-frame-hook nil
+  "A list of hooks run after changing the focused frame.")
+
+(defvar enfer-inhibit-switch-buffer-hooks nil
+  "Letvar for inhibiting `enfer-switch-buffer-hook'. Do not set this directly.")
+(defvar enfer-inhibit-switch-window-hooks nil
+  "Letvar for inhibiting `enfer-switch-window-hook'. Do not set this directly.")
+(defvar enfer-inhibit-switch-frame-hooks nil
+  "Letvar for inhibiting `enfer-switch-frame-hook'. Do not set this directly.")
+
+(defvar enfer--last-window nil)
+(defvar enfer--last-frame nil)
+
+(defun enfer|run-switch-window-hooks ()
+  (let ((gc-cons-threshold enfer-gc-cons-upper-limit))
+    (unless (or enfer-inhibit-switch-window-hooks
+                (eq enfer--last-window (selected-window))
+                (minibufferp))
+      (let ((enfer-inhibit-switch-window-hooks t))
+        (run-hooks 'enfer-switch-window-hook)
+        (setq enfer--last-window (selected-window))))))
+
+(defun enfer|run-switch-frame-hooks (&rest _)
+  (unless (or enfer-inhibit-switch-frame-hooks
+              (eq enfer--last-frame (selected-frame))
+              (frame-parameter nil 'parent-frame))
+    (let ((enfer-inhibit-switch-frame-hooks t))
+      (run-hooks 'enfer-switch-frame-hook)
+      (setq enfer--last-frame (selected-frame)))))
+
+(defun enfer*run-switch-buffer-hooks (orig-fn buffer-or-name &rest args)
+  (let ((gc-cons-threshold enfer-gc-cons-upper-limit))
+    (if (or enfer-inhibit-switch-buffer-hooks
+            (eq (current-buffer) (get-buffer buffer-or-name))
+            (and (eq orig-fn #'switch-to-buffer) (car args)))
+        (apply orig-fn buffer-or-name args)
+      (let ((enfer-inhibit-switch-buffer-hooks t))
+        (when-let (buffer (apply orig-fn buffer-or-name args))
+          (with-current-buffer (if (windowp buffer)
+                                   (window-buffer buffer)
+                                 buffer)
+            (run-hooks 'enfer-switch-buffer-hook))
+          buffer)))))
+
+(defun enfer*run-switch-to-next-prev-buffer-hooks (orig-fn &rest args)
+  (let ((gc-cons-threshold enfer-gc-cons-upper-limit))
+    (if enfer-inhibit-switch-buffer-hooks
+        (apply orig-fn args)
+      (let ((enfer-inhibit-switch-buffer-hooks t))
+        (when-let (buffer (apply orig-fn args))
+          (with-current-buffer buffer
+            (run-hooks 'enfer-switch-buffer-hook))
+          buffer)))))
+
+(defun enfer*run-load-theme-hooks (theme &optional _no-confirm no-enable)
+  "Set up `enfer-load-theme-hook' to run after `load-theme' is called."
+  (unless no-enable
+    (setq enfer-theme theme)
+    (run-hooks 'enfer-customize-theme-hook
+               'enfer-load-theme-hook)))
+
+(defun enfer|protect-fallback-buffer ()
+  "Don't kill the scratch buffer. Meant for `kill-buffer-query-functions'."
+  (not (eq (current-buffer) (enfer-fallback-buffer))))
+
+(defun enfer|highlight-non-default-indentation ()
+  "Highlight whitespace that doesn't match your `indent-tabs-mode' setting.
+
+e.g. If you indent with spaces by default, tabs will be highlighted. If you
+indent with tabs, spaces at BOL are highlighted.
+
+Does nothing if `whitespace-mode' is already active or the current buffer is
+read-only or not file-visiting."
+  (unless (or (eq major-mode 'fundamental-mode)
+              buffer-read-only
+              (null buffer-file-name))
+    (require 'whitespace)
+    (set (make-local-variable 'whitespace-style)
+         (let ((style (if indent-tabs-mode '(indentation) '(tabs tab-mark))))
+           (if whitespace-mode
+               (cl-union style whitespace-style)
+             `(face ,@style))))
+    (add-to-list 'whitespace-style 'face)
+    (whitespace-mode +1)))
+
+
+;;
+;;; General configuration
 
 (setq-default
+ ansi-color-for-comint-mode t
  bidi-display-reordering nil ; disable bidirectional text for tiny performance boost
  blink-matching-paren nil    ; don't blink--too distracting
- cursor-in-non-selected-windows nil  ; hide cursors in other windows
+ compilation-always-kill t        ; kill compilation process before starting another
+ compilation-ask-about-save nil   ; save all buffers on `compile'
+ compilation-scroll-output 'first-error
+ confirm-nonexistent-file-or-buffer t
+ confirm-kill-emacs #'enfer-quit-p   ; custom confirmation when killing Emacs
+ cursor-in-non-selected-windows nil ; hide cursors in other windows
+ custom-theme-directory (expand-file-name "themes/" enfer-private-dir)
  display-line-numbers-width 3
+ echo-keystrokes 0.02
+ enable-recursive-minibuffers nil
  frame-inhibit-implied-resize t
+ frame-title-format '("%b – Enfer Emacs") ; simple name in frame title
  ;; remove continuation arrow on right fringe
- fringe-indicator-alist (delq (assq 'continuation fringe-indicator-alist)
-                              fringe-indicator-alist)
+ fringe-indicator-alist
+ (delq (assq 'continuation fringe-indicator-alist)
+       fringe-indicator-alist)
  highlight-nonselected-windows nil
  image-animate-loop t
  indicate-buffer-boundaries nil
@@ -50,231 +188,81 @@ shorter major mode name in the mode-line. See `doom|set-mode-name'.")
  max-mini-window-height 0.3
  mode-line-default-help-echo nil ; disable mode-line mouseovers
  mouse-yank-at-point t           ; middle-click paste at point, not at click
- ibuffer-use-other-window t
  resize-mini-windows 'grow-only  ; Minibuffer resizing
  show-help-function nil          ; hide :help-echo text
- split-width-threshold 160       ; favor horizontal splits
- uniquify-buffer-name-style 'forward
  use-dialog-box nil              ; always avoid GUI
+ uniquify-buffer-name-style 'forward
  visible-cursor nil
  x-stretch-cursor nil
- ;; defer jit font locking slightly to [try to] improve Emacs performance
- jit-lock-defer-time nil
- jit-lock-stealth-nice 0.1
- jit-lock-stealth-time 0.2
- jit-lock-stealth-verbose nil
+ ;; Favor vertical splits
+ split-width-threshold 160
+ split-height-threshold nil
  ;; `pos-tip' defaults
  pos-tip-internal-border-width 6
  pos-tip-border-width 1
  ;; no beeping or blinking please
  ring-bell-function #'ignore
- visible-bell nil)
+ visible-bell nil
+ ;; don't resize emacs in steps, it looks weird
+ window-resize-pixelwise t
+ frame-resize-pixelwise t)
+;; y/n instead of yes/no
+(fset #'yes-or-no-p #'y-or-n-p)
+;; Truly silence startup message
+(fset #'display-startup-echo-area-message #'ignore)
+;; relegate tooltips to echo area only
+(if (bound-and-true-p tooltip-mode) (tooltip-mode -1))
+;; enabled by default; no thanks, too distracting
+(blink-cursor-mode -1)
+;; Handle ansi codes in compilation buffer
+(add-hook 'compilation-filter-hook #'enfer|apply-ansi-color-to-compilation-buffer)
+;; Make `next-buffer', `other-buffer', etc. ignore unreal buffers.
+(add-to-list 'default-frame-alist '(buffer-predicate . enfer-buffer-frame-predicate))
+;; Prevent the glimpse of un-styled Emacs by setting these early.
+(add-to-list 'default-frame-alist '(tool-bar-lines . 0))
+(add-to-list 'default-frame-alist '(menu-bar-lines . 0))
+(add-to-list 'default-frame-alist '(vertical-scroll-bars))
+;; prompts the user for confirmation when deleting a non-empty frame
+(global-set-key [remap delete-frame] #'enfer/delete-frame)
 
-(fset #'yes-or-no-p #'y-or-n-p) ; y/n instead of yes/no
+;; Use `show-trailing-whitespace' instead of `whitespace-mode' because it's
+;; faster (implemented in C). But try to only enable it in editing buffers.
+(setq-default show-trailing-whitespace nil)
+(setq-hook! '(prog-mode-hook text-mode-hook conf-mode-hook) show-trailing-whitespace t)
 
-(defun doom-quit-p (&optional prompt)
-  "Return t if this session should be killed. Prompts the user for
-confirmation."
-  (if (ignore-errors (doom-real-buffer-list))
-      (or (yes-or-no-p (format "››› %s" (or prompt "Quit Emacs?")))
-          (ignore (message "Aborted")))
-    t))
-(setq confirm-kill-emacs nil)
-(add-hook 'kill-emacs-query-functions #'doom-quit-p)
-
-;; show typed keystrokes in minibuffer
-(defun doom|enable-ui-keystrokes ()  (setq echo-keystrokes 0.02))
-(defun doom|disable-ui-keystrokes () (setq echo-keystrokes 0))
-(doom|enable-ui-keystrokes)
-;; ...but hide them while isearch is active
-(add-hook 'isearch-mode-hook     #'doom|disable-ui-keystrokes)
-(add-hook 'isearch-mode-end-hook #'doom|enable-ui-keystrokes)
-
-;; A minor mode for toggling the mode-line
-(defvar-local doom--modeline-format nil
-  "The modeline format to use when `doom-hide-modeline-mode' is active. Don't
-set this directly. Let-bind it instead.")
-(defvar-local doom--old-modeline-format nil
-  "The old modeline format, so `doom-hide-modeline-mode' can revert when it's
-disabled.")
-(define-minor-mode doom-hide-modeline-mode
-  "Minor mode to hide the mode-line in the current buffer."
-  :init-value nil
-  :global nil
-  (if doom-hide-modeline-mode
-      (setq doom--old-modeline-format mode-line-format
-            mode-line-format doom--modeline-format)
-    (setq mode-line-format doom--old-modeline-format
-          doom--old-modeline-format nil))
-  (force-mode-line-update))
-;; Ensure major-mode or theme changes don't overwrite these variables
-(put 'doom--modeline-format 'permanent-local t)
-(put 'doom--old-modeline-format 'permanent-local t)
-(put 'doom-hide-modeline-mode 'permanent-local t)
-
-(defun doom|hide-modeline-mode-reset ()
-  "Sometimes, a major-mode is activated after `doom-hide-modeline-mode' is
-activated, thus disabling it (because changing major modes invokes
-`kill-all-local-variables' and specifically seems to kill `mode-line-format's
-local value, whether or not it's permanent-local. Therefore, we cycle
-`doom-hide-modeline-mode' to fix this."
-  (when doom-hide-modeline-mode
-    (doom-hide-modeline-mode -1)
-    (doom-hide-modeline-mode +1)))
-(add-hook 'after-change-major-mode-hook #'doom|hide-modeline-mode-reset)
-
-;; no modeline in completion popups
-(add-hook 'completion-list-mode-hook #'doom-hide-modeline-mode)
-
-;; undo/redo changes to Emacs' window layout
-(defvar winner-dont-bind-my-keys t) ; I'll bind keys myself
-(autoload 'winner-mode "winner" nil t)
-(add-hook 'doom-init-ui-hook #'winner-mode)
-
-;; highlight matching delimiters
-(setq show-paren-delay 0.1
-      show-paren-highlight-openparen t
-      show-paren-when-point-inside-paren t)
-(add-hook 'doom-init-ui-hook #'show-paren-mode)
-
-;;; More reliable inter-window border
 ;; The native border "consumes" a pixel of the fringe on righter-most splits,
 ;; `window-divider' does not. Available since Emacs 25.1.
 (setq-default window-divider-default-places t
-              window-divider-default-bottom-width 0
+              window-divider-default-bottom-width 1
               window-divider-default-right-width 1)
-(add-hook 'doom-init-ui-hook #'window-divider-mode)
-
-;; like diminish, but for major-modes. [pedantry intensifies]
-(defun doom|set-mode-name ()
-  "Set the major mode's `mode-name', as dictated by `doom-major-mode-names'."
-  (when-let* ((name (cdr (assq major-mode doom-major-mode-names))))
-    (setq mode-name
-          (cond ((functionp name) (funcall name))
-                ((stringp name) name)
-                (t (error "'%s' isn't a valid name for %s" name major-mode))))))
-(add-hook 'after-change-major-mode-hook #'doom|set-mode-name)
+(add-hook 'enfer-init-ui-hook #'window-divider-mode)
 
 
 ;;
-;; Themes & fonts
-;;
+;;; Built-in packages
 
-;; Getting themes to remain consistent across GUI Emacs, terminal Emacs and
-;; daemon Emacs is hairy.
-;;
-;; + Running `doom|init-ui' directly sorts out the initial GUI frame.
-;; + Attaching it to `after-make-frame-functions' sorts out daemon Emacs.
-;; + Waiting for 0.1s in `doom|reload-ui-in-daemon' fixes daemon Emacs started
-;;   with `server-start' in an interactive session of Emacs AND in tty Emacs.
-(defun doom|init-ui (&optional frame)
-  "Set the theme and load the font, in that order."
-  (when doom-theme
-    (load-theme doom-theme t))
-  (condition-case-unless-debug ex
-      (when (display-graphic-p)
-        (when (fontp doom-font)
-          (set-frame-font doom-font nil (if frame (list frame) t))
-          (set-face-attribute 'fixed-pitch frame :font doom-font))
-        ;; Fallback to `doom-unicode-font' for Unicode characters
-        (when (fontp doom-unicode-font)
-          (set-fontset-font t 'unicode doom-unicode-font frame))
-        ;; ...and for variable-pitch-mode:
-        (when (fontp doom-variable-pitch-font)
-          (set-face-attribute 'variable-pitch frame :font doom-variable-pitch-font)))
-    ('error
-     (if (string-prefix-p "Font not available: " (error-message-string ex))
-         (lwarn 'doom-ui :warning
-                "Could not find the '%s' font on your system, falling back to system font"
-                (font-get (caddr ex) :family))
-       (lwarn 'doom-ui :error
-              "Unexpected error while initializing fonts: %s"
-              (error-message-string ex)))))
-  (run-hooks 'doom-init-ui-hook))
-
-(defun doom|reload-ui-in-daemon (frame)
-  "Reload the theme (and font) in an daemon frame."
-  (when (or (daemonp) (not (display-graphic-p)))
-    (with-selected-frame frame
-      (run-with-timer 0.1 nil #'doom|init-ui))))
-
-;; register UI init hooks
-(add-hook 'doom-post-init-hook #'doom|init-ui)
-(add-hook! 'after-make-frame-functions #'(doom|init-ui doom|reload-ui-in-daemon))
-
-
-;;
-;; Bootstrap
-;;
-
-;; prompts the user for confirmation when deleting a non-empty frame
-(define-key global-map [remap delete-frame] #'doom/delete-frame)
-;; simple name in frame title
-(setq-default frame-title-format '("DOOM Emacs"))
-;; auto-enabled in Emacs 25+; I'll do it myself
-(global-eldoc-mode -1)
-;; a good indicator that Emacs isn't frozen
-(add-hook 'doom-post-init-hook #'blink-cursor-mode)
-;; standardize default fringe width
-(if (fboundp 'fringe-mode) (fringe-mode doom-fringe-size))
-;; draw me like one of your French editors
-(tooltip-mode -1) ; relegate tooltips to echo area only
-(menu-bar-mode -1)
-(if (fboundp 'tool-bar-mode)   (tool-bar-mode -1))
-(if (fboundp 'scroll-bar-mode) (scroll-bar-mode -1))
-
-(defun doom|no-fringes-in-minibuffer ()
-  "Disable fringes in the minibuffer window."
-  (set-window-fringes (minibuffer-window) 0 0 nil))
-(add-hook! '(doom-post-init-hook minibuffer-setup-hook)
-  #'doom|no-fringes-in-minibuffer)
-
-(defun doom|protect-visible-buffers ()
-  "Don't kill the current buffer if it is visible in another window (bury it
-instead)."
-  (not (delq (selected-window)
-             (get-buffer-window-list nil nil t))))
-(add-hook! doom-post-init
-  (add-hook 'kill-buffer-query-functions #'doom|protect-visible-buffers))
-
-
-;;
-;; Plugins
-;;
-
-(def-package! all-the-icons
-  :commands (all-the-icons-octicon all-the-icons-faicon all-the-icons-fileicon
-             all-the-icons-wicon all-the-icons-material all-the-icons-alltheicon
-             all-the-icons-install-fonts)
+(def-package! ediff
+  :defer t
   :init
-  (defun doom*disable-all-the-icons-in-tty (orig-fn &rest args)
-    (when (display-graphic-p)
-      (apply orig-fn args)))
-  ;; all-the-icons doesn't work in the terminal, so we "disable" it.
-  (dolist (fn '(all-the-icons-octicon all-the-icons-material
-                all-the-icons-faicon all-the-icons-fileicon
-                all-the-icons-wicon all-the-icons-alltheicon))
-    (advice-add fn :around #'doom*disable-all-the-icons-in-tty)))
+  (setq ediff-diff-options "-w" ; turn off whitespace checking
+        ediff-split-window-function #'split-window-horizontally
+        ediff-window-setup-function #'ediff-setup-windows-plain)
+  :config
+  (defvar enfer--ediff-saved-wconf nil)
+  ;; Restore window config after quitting ediff
+  (defun enfer|ediff-save-wconf ()
+    (setq enfer--ediff-saved-wconf (current-window-configuration)))
+  (add-hook 'ediff-before-setup-hook #'enfer|ediff-save-wconf)
 
-(def-package! fringe-helper
-  :commands (fringe-helper-define fringe-helper-convert)
-  :init
-  (unless (fboundp 'define-fringe-bitmap)
-    ;; doesn't exist in terminal Emacs; define it to prevent errors
-    (defun define-fringe-bitmap (&rest _))))
+  (defun enfer|ediff-restore-wconf ()
+    (when (window-configuration-p enfer--ediff-saved-wconf)
+      (set-window-configuration enfer--ediff-saved-wconf)))
+  (add-hook 'ediff-quit-hook #'enfer|ediff-restore-wconf 'append)
+  (add-hook 'ediff-suspend-hook #'enfer|ediff-restore-wconf 'append))
 
-(def-package! hideshow ; built-in
-  :commands (hs-minor-mode hs-toggle-hiding hs-already-hidden-p)
-  :config (setq hs-hide-comments-when-hiding-all nil))
 
-(def-package! highlight-indentation
-  :commands (highlight-indentation-mode highlight-indentation-current-column-mode))
-
-;; For modes with sub-par number fontification
-(def-package! highlight-numbers :commands highlight-numbers-mode)
-
-;; Highlights the current line
-(def-package! hl-line ; built-in
+(def-package! hl-line
+  ;; Highlights the current line
   :hook ((prog-mode text-mode conf-mode) . hl-line-mode)
   :config
   ;; I don't need hl-line showing in other windows. This also offers a small
@@ -282,104 +270,110 @@ instead)."
   (setq hl-line-sticky-flag nil
         global-hl-line-sticky-flag nil)
 
-  ;; On Emacs 26+, when point is on the last line, hl-line highlights bleed into
-  ;; the rest of the window after eob. This is the fix.
-  (when (boundp 'display-line-numbers)
-    (defun doom--line-range ()
-      (cons (line-beginning-position)
-            (cond ((save-excursion
-                     (goto-char (line-end-position))
-                     (and (eobp) (not (bolp))))
-                   (1- (line-end-position)))
-                  ((or (eobp) (save-excursion (forward-line) (eobp)))
-                   (line-end-position))
-                  (t
-                   (line-beginning-position 2)))))
-    (setq hl-line-range-function #'doom--line-range))
-
+  ;; Disable `hl-line' in evil-visual mode (temporarily). `hl-line' can make the
+  ;; selection region harder to see while in evil visual mode.
   (after! evil
-    (defvar-local doom-buffer-hl-line-mode nil)
+    (defvar enfer-buffer-hl-line-mode nil)
 
-    ;; Disable `hl-line' in evil-visual mode (temporarily). `hl-line' can make
-    ;; the selection region harder to see while in evil visual mode.
-    (defun doom|disable-hl-line ()
+    (defun enfer|disable-hl-line ()
       (when hl-line-mode
-        (setq doom-buffer-hl-line-mode t)
+        (setq-local enfer-buffer-hl-line-mode t)
         (hl-line-mode -1)))
-    (defun doom|enable-hl-line-maybe ()
-      (if doom-buffer-hl-line-mode (hl-line-mode +1)))
+    (add-hook 'evil-visual-state-entry-hook #'enfer|disable-hl-line)
 
-    (add-hook 'evil-visual-state-entry-hook #'doom|disable-hl-line)
-    (add-hook 'evil-visual-state-exit-hook  #'doom|enable-hl-line-maybe)))
+    (defun enfer|enable-hl-line-maybe ()
+      (when enfer-buffer-hl-line-mode
+        (hl-line-mode +1)))
+    (add-hook 'evil-visual-state-exit-hook  #'enfer|enable-hl-line-maybe)))
 
-;; Helps us distinguish stacked delimiter pairs. Especially in parentheses-drunk
-;; languages like Lisp.
-(def-package! rainbow-delimiters
-  :hook (lisp-mode . rainbow-delimiters-mode)
-  :config (setq rainbow-delimiters-max-face-count 3))
 
-;; For a distractions-free-like UI, that dynamically resizes margets and can
-;; center a buffer.
-(def-package! visual-fill-column
-  :commands visual-fill-column-mode
+(def-package! winner
+  ;; undo/redo changes to Emacs' window layout
+  :after-call (after-find-file enfer-switch-window-hook)
+  :preface (defvar winner-dont-bind-my-keys t)
+  :config (winner-mode +1)) ; I'll bind keys myself
+
+
+(def-package! paren
+  ;; highlight matching delimiters
+  :after-call (after-find-file enfer-switch-buffer-hook)
   :config
-  (setq-default
-   visual-fill-column-center-text t
-   visual-fill-column-width
-   ;; take Emacs 26 line numbers into account
-   (+ (if (boundp 'display-line-numbers) 6 0)
-      fill-column)))
+  (setq show-paren-delay 0.1
+        show-paren-highlight-openparen t
+        show-paren-when-point-inside-paren t)
+  (show-paren-mode +1))
+
+
+;;;###package whitespace
+(setq whitespace-line-column nil
+      whitespace-style
+      '(face indentation tabs tab-mark spaces space-mark newline newline-mark
+        trailing lines-tail)
+      whitespace-display-mappings
+      '((tab-mark ?\t [?› ?\t])
+        (newline-mark ?\n [?¬ ?\n])
+        (space-mark ?\  [?·] [?.])))
+
+;; Disable these because whitespace should be customized programmatically
+;; (through `whitespace-style'), and not through these commands.
+(put 'whitespace-toggle-options 'disabled t)
+(put 'global-whitespace-toggle-options 'disabled t)
 
 
 ;;
-;; Line numbers
-;;
+;;; Third party packages
 
-(defvar doom-line-numbers-style t
-  "The style to use for the line number display.
-
-Accepts the same arguments as `display-line-numbers', which are:
-
-nil         No line numbers
-t           Ordinary line numbers
-'relative   Relative line numbers")
-
-(defun doom|enable-line-numbers (&optional arg)
-  "Enables the display of line numbers, using `display-line-numbers' (in Emacs
-26+) or `nlinum-mode'.
-
-See `doom-line-numbers-style' to control the style of line numbers to display."
-  (cond ((boundp 'display-line-numbers)
-         (setq display-line-numbers
-               (pcase arg
-                 (+1 doom-line-numbers-style)
-                 (-1 nil)
-                 (_ doom-line-numbers-style))))
-        ((eq doom-line-numbers-style 'relative)
-         (if (= arg -1)
-             (nlinum-relative-off)
-           (nlinum-relative-on)))
-        ((not (null doom-line-numbers-style))
-         (nlinum-mode (or arg +1)))))
-
-(defun doom|disable-line-numbers ()
-  "Disable the display of line numbers."
-  (doom|enable-line-numbers -1))
-
-(add-hook! (prog-mode text-mode conf-mode) #'doom|enable-line-numbers)
-
-;; Emacs 26+ has native line number support.
-;; Line number column. A faster (or equivalent, in the worst case) line number
-;; plugin than `linum-mode'.
-(def-package! nlinum
-  :unless (boundp 'display-line-numbers)
-  :commands nlinum-mode
+(def-package! all-the-icons
+  :commands (all-the-icons-octicon all-the-icons-faicon all-the-icons-fileicon
+             all-the-icons-wicon all-the-icons-material all-the-icons-alltheicon)
   :init
-  (defvar doom-line-number-lpad 4
+  (defun enfer*disable-all-the-icons-in-tty (orig-fn &rest args)
+    (if (display-graphic-p)
+        (apply orig-fn args)
+      ""))
+  :config
+  ;; all-the-icons doesn't work in the terminal, so we "disable" it.
+  (dolist (fn '(all-the-icons-octicon all-the-icons-material
+                all-the-icons-faicon all-the-icons-fileicon
+                all-the-icons-wicon all-the-icons-alltheicon))
+    (advice-add fn :around #'enfer*disable-all-the-icons-in-tty)))
+
+;;;###package hide-mode-line-mode
+(add-hook 'completion-list-mode-hook #'hide-mode-line-mode)
+(add-hook 'Man-mode-hook #'hide-mode-line-mode)
+
+;; Better fontification of number literals in code
+(def-package! highlight-numbers
+  :hook ((prog-mode conf-mode) . highlight-numbers-mode)
+  :config (setq highlight-numbers-generic-regexp "\\_<[[:digit:]]+\\(?:\\.[0-9]*\\)?\\_>"))
+
+;;;###package rainbow-delimiters
+;; Helps us distinguish stacked delimiter pairs, especially in parentheses-drunk
+;; languages like Lisp.
+(setq rainbow-delimiters-max-face-count 3)
+
+
+;;
+;;; Line numbers
+
+;; line numbers in most modes
+(add-hook! (prog-mode text-mode conf-mode) #'display-line-numbers-mode)
+
+(defun enfer|enable-line-numbers ()  (display-line-numbers-mode +1))
+(defun enfer|disable-line-numbers () (display-line-numbers-mode -1))
+
+;; `nlinum' is used for Emacs 25 users, as Emacs 26+ has native line numbers.
+(def-package! nlinum
+  ;; Line number column. A faster (or equivalent, in the worst case) line number
+  ;; plugin than `linum-mode'.
+  :unless EMACS26+
+  :defer t
+  :init
+  (defvar enfer-line-number-lpad 4
     "How much padding to place before line numbers.")
-  (defvar doom-line-number-rpad 1
+  (defvar enfer-line-number-rpad 1
     "How much padding to place after line numbers.")
-  (defvar doom-line-number-pad-char 32
+  (defvar enfer-line-number-pad-char 32
     "Character to use for padding line numbers.
 
 By default, this is a space character. If you use `whitespace-mode' with
@@ -393,15 +387,15 @@ character that looks like a space that `whitespace-mode' won't affect.")
   (add-hook! 'hl-line-mode-hook
     (remove-overlays (point-min) (point-max) 'face 'hl-line))
 
-  (defun doom-nlinum-format-fn (line _width)
-    "A more customizable `nlinum-format-function'. See `doom-line-number-lpad',
-`doom-line-number-rpad' and `doom-line-number-pad-char'. Allows a fix for
+  (defun enfer-nlinum-format-fn (line _width)
+    "A more customizable `nlinum-format-function'. See `enfer-line-number-lpad',
+`enfer-line-number-rpad' and `enfer-line-number-pad-char'. Allows a fix for
 `whitespace-mode' space-marks appearing inside the line number."
     (let ((str (number-to-string line)))
-      (setq str (concat (make-string (max 0 (- doom-line-number-lpad (length str)))
-                                     doom-line-number-pad-char)
+      (setq str (concat (make-string (max 0 (- enfer-line-number-lpad (length str)))
+                                     enfer-line-number-pad-char)
                         str
-                        (make-string doom-line-number-rpad doom-line-number-pad-char)))
+                        (make-string enfer-line-number-rpad enfer-line-number-pad-char)))
       (put-text-property 0 (length str) 'face
                          (if (and nlinum-highlight-current-line
                                   (= line nlinum--current-line))
@@ -409,18 +403,18 @@ character that looks like a space that `whitespace-mode' won't affect.")
                            'linum)
                          str)
       str))
-  (setq nlinum-format-function #'doom-nlinum-format-fn)
+  (setq nlinum-format-function #'enfer-nlinum-format-fn)
 
-  (defun doom|init-nlinum-width ()
+  (defun enfer|init-nlinum-width ()
     "Calculate line number column width beforehand (optimization)."
     (setq nlinum--width
           (length (save-excursion (goto-char (point-max))
                                   (format-mode-line "%l")))))
-  (add-hook 'nlinum-mode-hook #'doom|init-nlinum-width))
+  (add-hook 'nlinum-mode-hook #'enfer|init-nlinum-width))
 
-;; Fixes disappearing line numbers in nlinum and other quirks
 (def-package! nlinum-hl
-  :unless (boundp 'display-line-numbers)
+  ;; Fixes disappearing line numbers in nlinum and other quirks
+  :unless EMACS26+
   :after nlinum
   :config
   ;; With `markdown-fontify-code-blocks-natively' enabled in `markdown-mode',
@@ -432,79 +426,152 @@ character that looks like a space that `whitespace-mode' won't affect.")
   (advice-add #'web-mode-fold-or-unfold :after #'nlinum-hl-do-generic-flush)
   ;; Changing fonts can leave nlinum line numbers in their original size; this
   ;; forces them to resize.
-  (advice-add #'set-frame-font :after #'nlinum-hl-flush-all-windows))
+  (add-hook 'after-setting-font-hook #'nlinum-hl-flush-all-windows))
 
 (def-package! nlinum-relative
-  :unless (boundp 'display-line-numbers)
-  :commands nlinum-relative-mode
+  :unless EMACS26+
+  :defer t
   :config
-  (after! evil (nlinum-relative-setup-evil)))
+  (setq nlinum-format " %d ")
+  (add-hook 'evil-mode-hook #'nlinum-relative-setup-evil))
 
 
 ;;
-;; Modeline
+;;; Theme & font
+
+(defun enfer|init-fonts ()
+  "Loads fonts.
+
+Fonts are specified by `enfer-font', `enfer-variable-pitch-font',
+`enfer-serif-font' and `enfer-unicode-font'."
+  (condition-case e
+      (progn
+        (cond (enfer-font
+               (add-to-list
+                'default-frame-alist
+                (cons 'font
+                      (cond ((stringp enfer-font) enfer-font)
+                            ((fontp enfer-font) (font-xlfd-name enfer-font))
+                            ((signal 'wrong-type-argument (list '(fontp stringp) enfer-font)))))))
+              ((display-graphic-p)
+               (setq enfer-font (face-attribute 'default :font))))
+        (when enfer-serif-font
+          (set-face-attribute 'fixed-pitch-serif nil :font enfer-serif-font))
+        (when enfer-variable-pitch-font
+          (set-face-attribute 'variable-pitch nil :font enfer-variable-pitch-font)))
+    ((debug error)
+     (if (string-prefix-p "Font not available: " (error-message-string e))
+         (lwarn 'enfer-ui :warning
+                "Could not find the '%s' font on your system, falling back to system font"
+                (font-get (caddr e) :family))
+       (signal 'enfer-error e)))))
+
+(defun enfer|init-emoji-fonts (frame)
+  "Set up unicode fonts (if `enfer-unicode-font' is set).
+
+By default, this uses Apple Color Emoji on MacOS and Symbola on Linux."
+  (when enfer-unicode-font
+    (set-fontset-font t 'unicode enfer-unicode-font frame 'prepend)))
+
+(defun enfer|init-theme (&optional frame)
+  "Load the theme specified by `enfer-theme' in FRAME."
+  (when (and enfer-theme (not (memq enfer-theme custom-enabled-themes)))
+    (with-selected-frame (or frame (selected-frame))
+      (let ((enfer--prefer-theme-elc t))
+        (load-theme enfer-theme t)))))
+
+
 ;;
+;;; Bootstrap
 
-(defmacro def-modeline-segment! (name &rest forms)
-  "Defines a modeline segment and byte compiles it."
-  (declare (indent defun) (doc-string 2))
-  (let ((sym (intern (format "doom-modeline-segment--%s" name))))
+(defun enfer|init-ui ()
+  "Initialize Enfer's user interface by applying all its advice and hooks."
+  (run-hook-wrapped 'enfer-init-ui-hook #'enfer-try-run-hook)
+
+  (add-to-list 'kill-buffer-query-functions #'enfer|protect-fallback-buffer nil 'eq)
+  (add-hook 'after-change-major-mode-hook #'enfer|highlight-non-default-indentation)
+
+  ;; Initialize custom switch-{buffer,window,frame} hooks:
+  ;; + `enfer-switch-buffer-hook'
+  ;; + `enfer-switch-window-hook'
+  ;; + `enfer-switch-frame-hook'
+  (add-hook 'buffer-list-update-hook #'enfer|run-switch-window-hooks)
+  (add-hook 'focus-in-hook #'enfer|run-switch-frame-hooks)
+  (advice-add! '(switch-to-next-buffer switch-to-prev-buffer)
+               :around #'enfer*run-switch-to-next-prev-buffer-hooks)
+  (advice-add! '(switch-to-buffer display-buffer)
+               :around #'enfer*run-switch-buffer-hooks))
+
+;; Apply `enfer-theme'
+(add-hook (if (daemonp)
+              'after-make-frame-functions
+            'enfer-init-ui-hook)
+          #'enfer|init-theme)
+;; Apply `enfer-font' et co
+(add-hook 'enfer-after-init-modules-hook #'enfer|init-fonts)
+;; Ensure unicode fonts are set on each frame
+(add-hook 'after-make-frame-functions #'enfer|init-emoji-fonts)
+;; Setup `enfer-load-theme-hook' and ensure `enfer-theme' is always set to the
+;; currently loaded theme
+(advice-add #'load-theme :after #'enfer*run-load-theme-hooks)
+
+(add-hook 'window-setup-hook #'enfer|init-ui)
+
+
+;;
+;;; Fixes/hacks
+
+;; doesn't exist in terminal Emacs; we define it to prevent errors
+(unless (fboundp 'define-fringe-bitmap)
+  (defun define-fringe-bitmap (&rest _)))
+
+(defun enfer*prefer-compiled-theme (orig-fn &rest args)
+  "Make `load-theme' prioritize the byte-compiled theme for a moderate boost in
+startup (or theme switch) time, so long as `enfer--prefer-theme-elc' is non-nil."
+  (if (or (null after-init-time)
+          enfer--prefer-theme-elc)
+      (cl-letf* ((old-locate-file (symbol-function 'locate-file))
+                 ((symbol-function 'locate-file)
+                  (lambda (filename path &optional _suffixes predicate)
+                    (funcall old-locate-file filename path '("c" "") predicate))))
+        (apply orig-fn args))
+    (apply orig-fn args)))
+(advice-add #'load-theme :around #'enfer*prefer-compiled-theme)
+
+(after! whitespace
+  (defun enfer*disable-whitespace-mode-in-childframes (orig-fn)
+    "`whitespace-mode' inundates child frames with whitspace markers, so disable
+it to fix all that visual noise."
+    (unless (frame-parameter nil 'parent-frame)
+      (funcall orig-fn)))
+  (add-function :around whitespace-enable-predicate #'enfer*disable-whitespace-mode-in-childframes)
+
+  (defun enfer|disable-whitespace-mode-in-childframes (frame)
+    "`whitespace-mode' inundates child frames with whitspace markers, so disable
+it to fix all that visual noise."
+    (when (frame-parameter frame 'parent-frame)
+      (with-selected-frame frame
+        (setq-local whitespace-style nil)
+        frame)))
+  (add-hook 'after-make-frame-functions #'enfer|disable-whitespace-mode-in-childframes))
+
+;; Don't allow cursor to enter the prompt
+(setq minibuffer-prompt-properties '(read-only t intangible t cursor-intangible t face minibuffer-prompt))
+(add-hook 'minibuffer-setup-hook #'cursor-intangible-mode)
+
+;; Don't display messages in the minibuffer when using the minibuffer
+(defmacro enfer-silence-motion-key (command key)
+  (let ((key-command (intern (format "enfer/silent-%s" command))))
     `(progn
-       (defun ,sym () ,@forms)
-       ,(unless (bound-and-true-p byte-compile-current-file)
-          `(let (byte-compile-warnings)
-             (byte-compile #',sym))))))
+       (defun ,key-command ()
+         (interactive)
+         (ignore-errors (call-interactively ',command)))
+       (define-key minibuffer-local-map (kbd ,key) #',key-command))))
+(enfer-silence-motion-key backward-delete-char "<backspace>")
+(enfer-silence-motion-key delete-char "<delete>")
 
-(defsubst doom--prepare-modeline-segments (segments)
-  (cl-loop for seg in segments
-           if (stringp seg)
-            collect seg
-           else
-            collect (list (intern (format "doom-modeline-segment--%s" (symbol-name seg))))))
-
-(defmacro def-modeline! (name lhs &optional rhs)
-  "Defines a modeline format and byte-compiles it. NAME is a symbol to identify
-it (used by `doom-modeline' for retrieval). LHS and RHS are lists of symbols of
-modeline segments defined with `def-modeline-segment!'.
-
-Example:
-  (def-modeline! minimal
-    (bar matches \" \" buffer-info)
-    (media-info major-mode))
-  (doom-set-modeline 'minimal t)"
-  (let ((sym (intern (format "doom-modeline-format--%s" name)))
-        (lhs-forms (doom--prepare-modeline-segments lhs))
-        (rhs-forms (doom--prepare-modeline-segments rhs)))
-    `(progn
-       (defun ,sym ()
-         (let ((lhs (list ,@lhs-forms))
-               (rhs (list ,@rhs-forms)))
-           (let ((rhs-str (format-mode-line rhs)))
-             (list lhs
-                   (propertize
-                    " " 'display
-                    `((space :align-to (- (+ right right-fringe right-margin)
-                                          ,(+ 1 (string-width rhs-str))))))
-                   rhs-str))))
-       ,(unless (bound-and-true-p byte-compile-current-file)
-          `(let (byte-compile-warnings)
-             (byte-compile #',sym))))))
-
-(defun doom-modeline (key)
-  "Returns a mode-line configuration associated with KEY (a symbol). Throws an
-error if it doesn't exist."
-  (let ((fn (intern (format "doom-modeline-format--%s" key))))
-    (when (functionp fn)
-      `(:eval (,fn)))))
-
-(defun doom-set-modeline (key &optional default)
-  "Set the modeline format. Does nothing if the modeline KEY doesn't exist. If
-DEFAULT is non-nil, set the default mode-line for all buffers."
-  (when-let* ((modeline (doom-modeline key)))
-    (setf (if default
-              (default-value 'mode-line-format)
-            (buffer-local-value 'mode-line-format (current-buffer)))
-          modeline)))
+;; Switch to `enfer-fallback-buffer' if on last real buffer
+(advice-add #'kill-current-buffer :around #'enfer*switch-to-fallback-buffer-maybe)
 
 (provide 'core-ui)
 ;;; core-ui.el ends here

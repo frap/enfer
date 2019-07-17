@@ -4,40 +4,40 @@
 (require 'projectile)
 
 ;;
-;; `doom-project-p'
+;; `enfer-project-p'
 (def-test! project-p
   :minor-mode projectile-mode
-  (let ((default-directory doom-emacs-dir))
-    (should (doom-project-p)))
+  (let ((default-directory enfer-emacs-dir))
+    (should (enfer-project-p)))
   (let ((default-directory (expand-file-name "~")))
-    (should-not (doom-project-p))))
+    (should-not (enfer-project-p))))
 
-;; `doom-project-p'
+;; `enfer-project-p'
 (def-test! project-root
   :minor-mode projectile-mode
   ;; Should resolve to project root
-  (let ((default-directory doom-core-dir))
-    (should (equal (doom-project-root) doom-emacs-dir)))
+  (let ((default-directory enfer-core-dir))
+    (should (equal (enfer-project-root) enfer-emacs-dir)))
   ;; Should resolve to `default-directory' if not a project
   (let ((default-directory (expand-file-name "~")))
-    (should (equal (doom-project-root) default-directory))))
+    (should (equal (enfer-project-root) default-directory))))
 
-;; `doom-project-expand'
+;; `enfer-project-expand'
 (def-test! project-expand
   :minor-mode projectile-mode
-  (let ((default-directory doom-core-dir))
-    (should (equal (doom-project-expand "init.el")
-                   (expand-file-name "init.el" (doom-project-root))))))
+  (let ((default-directory enfer-core-dir))
+    (should (equal (enfer-project-expand "init.el")
+                   (expand-file-name "init.el" (enfer-project-root))))))
 
-;; `doom-project-has!'
+;; `enfer-project-has!'
 (def-test! project-has!
   :minor-mode projectile-mode
-  (let ((default-directory doom-core-dir))
+  (let ((default-directory enfer-core-dir))
     ;; Resolve from project root
-    (should (doom-project-has! "init.el"))
+    (should (enfer-project-has! "init.el"))
     ;; Chained file checks
-    (should (doom-project-has! (and "init.el" "LICENSE")))
-    (should (doom-project-has! (or "init.el" "does-not-exist")))
-    (should (doom-project-has! (and "init.el" (or "LICENSE" "does-not-exist"))))
+    (should (enfer-project-has! (and "init.el" "LICENSE")))
+    (should (enfer-project-has! (or "init.el" "does-not-exist")))
+    (should (enfer-project-has! (and "init.el" (or "LICENSE" "does-not-exist"))))
     ;; Should resolve relative paths from `default-directory'
-    (should (doom-project-has! (and "./core.el" "../init.el")))))
+    (should (enfer-project-has! (and "./core.el" "../init.el")))))

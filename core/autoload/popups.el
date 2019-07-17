@@ -1,19 +1,19 @@
 ;;; core/autoload/popups.el -*- lexical-binding: t; -*-
 
 ;;;###autoload
-(defun doom-popup-p (&optional target)
+(defun enfer-popup-p (&optional target)
   "Return t if TARGET (a window or buffer) is a popup. Uses current window if
 omitted."
   (when-let* ((target (or target (selected-window))))
     (cond ((bufferp target)
            (and (buffer-live-p target)
-                (buffer-local-value 'doom-popup-mode target)))
+                (buffer-local-value 'enfer-popup-mode target)))
           ((windowp target)
            (and (window-live-p target)
                 (window-parameter target 'popup))))))
 
 ;;;###autoload
-(defun doom-popup-buffer (buffer &optional plist extend-p)
+(defun enfer-popup-buffer (buffer &optional plist extend-p)
   "Display BUFFER in a shackle popup with PLIST rules. See `shackle-rules' for
 possible rules. If EXTEND-P is non-nil, don't overwrite the original rules for
 this popup, just the specified properties. Returns the new popup window."
@@ -28,10 +28,10 @@ this popup, just the specified properties. Returns the new popup window."
            (shackle-match buffer))))
 
 ;;;###autoload
-(defun doom-popup-switch-to-buffer (buffer)
+(defun enfer-popup-switch-to-buffer (buffer)
   "Switch the current (or closest) pop-up window to BUFFER."
-  (unless (doom-popup-p)
-    (if-let* ((popups (doom-popup-windows)))
+  (unless (enfer-popup-p)
+    (if-let* ((popups (enfer-popup-windows)))
         (select-window (car popups))
       (error "No popups to switch to")))
   (set-window-dedicated-p nil nil)
@@ -40,65 +40,65 @@ this popup, just the specified properties. Returns the new popup window."
     (set-window-dedicated-p nil t)))
 
 ;;;###autoload
-(defun doom-popup-fit-to-buffer (&optional window max-size)
+(defun enfer-popup-fit-to-buffer (&optional window max-size)
   "Fit WINDOW to the size of its content."
   (unless (string-empty-p (buffer-string))
-    (let* ((window-size (doom-popup-size window))
-           (max-size (or max-size (doom-popup-property :size window)))
+    (let* ((window-size (enfer-popup-size window))
+           (max-size (or max-size (enfer-popup-property :size window)))
            (size (+ 2 (if (floatp max-size) (truncate (* max-size window-size)) window-size))))
       (fit-window-to-buffer window size nil size))))
 
 ;;;###autoload
-(defun doom-popup-move (direction)
+(defun enfer-popup-move (direction)
   "Move a popup window to another side of the frame, in DIRECTION, which can be
 one of the following: 'left 'right 'above 'below"
-  (when (doom-popup-p)
+  (when (enfer-popup-p)
     (let ((buffer (current-buffer))
-          (doom-popup-inhibit-autokill t))
-      (doom/popup-close)
-      (doom-popup-buffer buffer `(:align ,direction) 'extend))))
+          (enfer-popup-inhibit-autokill t))
+      (enfer/popup-close)
+      (enfer-popup-buffer buffer `(:align ,direction) 'extend))))
 
 ;;;###autoload
-(defun doom-popup-file (file &optional plist extend-p)
+(defun enfer-popup-file (file &optional plist extend-p)
   "Display FILE in a shackle popup, with PLIST rules. See `shackle-rules' for
 possible rules."
   (unless (file-exists-p file)
     (user-error "Can't display file in popup, it doesn't exist: %s" file))
-  (doom-popup-buffer (find-file-noselect file t) plist extend-p))
+  (enfer-popup-buffer (find-file-noselect file t) plist extend-p))
 
 ;;;###autoload
-(defun doom-popup-windows (&optional filter-static-p)
+(defun enfer-popup-windows (&optional filter-static-p)
   "Get a list of open pop up windows."
-  (cl-loop for window in doom-popup-windows
-           if (and (doom-popup-p window)
+  (cl-loop for window in enfer-popup-windows
+           if (and (enfer-popup-p window)
                    (not (and filter-static-p
-                             (doom-popup-property :static window))))
+                             (enfer-popup-property :static window))))
            collect window))
 
 ;;;###autoload
-(defun doom-popup-properties (window-or-buffer)
+(defun enfer-popup-properties (window-or-buffer)
   "Returns a window's popup property list, if possible. The buffer-local
-`doom-popup-rules' always takes priority, but this will fall back to the popup
+`enfer-popup-rules' always takes priority, but this will fall back to the popup
 window parameter."
   (cond ((windowp window-or-buffer)
          (or (window-parameter window-or-buffer 'popup)
-             (doom-popup-properties (window-buffer window-or-buffer))))
+             (enfer-popup-properties (window-buffer window-or-buffer))))
         ((bufferp window-or-buffer)
-         (buffer-local-value 'doom-popup-rules window-or-buffer))))
+         (buffer-local-value 'enfer-popup-rules window-or-buffer))))
 
 ;;;###autoload
-(defun doom-popup-property (prop &optional window)
-  "Returns a `doom-popup-rules' PROPerty from WINDOW."
-  (or (plist-get (doom-popup-properties (or window (selected-window)))
+(defun enfer-popup-property (prop &optional window)
+  "Returns a `enfer-popup-rules' PROPerty from WINDOW."
+  (or (plist-get (enfer-popup-properties (or window (selected-window)))
                  prop)
       (pcase prop
         (:size  shackle-default-size)
         (:align shackle-default-alignment))))
 
 ;;;###autoload
-(defun doom-popup-side (&optional window)
+(defun enfer-popup-side (&optional window)
   "Return what side a popup WINDOW came from ('left 'right 'above or 'below)."
-  (let ((align (doom-popup-property :align window)))
+  (let ((align (enfer-popup-property :align window)))
     (when (eq align t)
       (setq align shackle-default-alignment))
     (when (functionp align)
@@ -106,18 +106,18 @@ window parameter."
     align))
 
 ;;;###autoload
-(defun doom-popup-size (&optional window)
+(defun enfer-popup-size (&optional window)
   "Return the size of a popup WINDOW."
-  (pcase (doom-popup-side window)
+  (pcase (enfer-popup-side window)
     ((or 'left 'right)  (window-width window))
     ((or 'above 'below) (window-height window))))
 
-(defun doom--popup-data (window)
+(defun enfer--popup-data (window)
   (when-let* ((buffer (window-buffer window)))
     `(,(buffer-name buffer)
       :file  ,(buffer-file-name buffer)
       :rules ,(window-parameter window 'popup)
-      :size  ,(doom-popup-size window))))
+      :size  ,(enfer-popup-size window))))
 
 ;;;###autoload
 (defmacro with-popup-rules! (rules &rest body)
@@ -132,17 +132,17 @@ window parameter."
 (defmacro save-popups! (&rest body)
   "Sets aside all popups before executing the original function, usually to
 prevent the popup(s) from messing up the UI (or vice versa)."
-  `(let ((in-popup-p (doom-popup-p))
-         (popups (doom-popup-windows))
-         (doom-popup-remember-history t)
-         (doom-popup-inhibit-autokill t))
+  `(let ((in-popup-p (enfer-popup-p))
+         (popups (enfer-popup-windows))
+         (enfer-popup-remember-history t)
+         (enfer-popup-inhibit-autokill t))
      (when popups
-       (mapc #'doom/popup-close popups))
+       (mapc #'enfer/popup-close popups))
      (unwind-protect
          (progn ,@body)
        (when popups
          (let ((origin (selected-window)))
-           (doom/popup-restore)
+           (enfer/popup-restore)
            (unless in-popup-p
              (select-window origin)))))))
 
@@ -150,17 +150,17 @@ prevent the popup(s) from messing up the UI (or vice versa)."
 ;; --- Commands ---------------------------
 
 ;;;###autoload
-(defun doom/popup-restore ()
+(defun enfer/popup-restore ()
   "Restore the last open popups. If the buffers have been killed, and
 represented real files, they will be restored. Dead special buffers or buffers
 with non-nil :autokill properties will not be.
 
 Returns t if popups were restored, nil otherwise."
   (interactive)
-  (unless doom-popup-history
+  (unless enfer-popup-history
     (error "No popups to restore"))
   (let (any-p)
-    (dolist (spec doom-popup-history)
+    (dolist (spec enfer-popup-history)
       (let ((buffer (get-buffer (car spec)))
             (file   (plist-get (cdr spec) :file))
             (rules  (plist-get (cdr spec) :rules))
@@ -172,37 +172,37 @@ Returns t if popups were restored, nil otherwise."
                   (find-file-noselect file t))))
         (when size
           (setq rules (plist-put rules :size size)))
-        (when (and buffer (doom-popup-buffer buffer rules) (not any-p))
+        (when (and buffer (enfer-popup-buffer buffer rules) (not any-p))
           (setq any-p t))))
     (when any-p
-      (setq doom-popup-history '()))
+      (setq enfer-popup-history '()))
     any-p))
 
 ;;;###autoload
-(defun doom/popup-toggle ()
+(defun enfer/popup-toggle ()
   "Toggle popups on and off. If used outside of popups (and popups are
 available), it will select the nearest popup window."
   (interactive)
-  (when (doom-popup-p)
-    (if doom-popup-other-window
-        (select-window doom-popup-other-window)
+  (when (enfer-popup-p)
+    (if enfer-popup-other-window
+        (select-window enfer-popup-other-window)
       (other-window 1)))
-  (if (doom-popup-windows t)
-      (let ((doom-popup-inhibit-autokill t))
-        (doom/popup-close-all t))
-    (doom/popup-restore)))
+  (if (enfer-popup-windows t)
+      (let ((enfer-popup-inhibit-autokill t))
+        (enfer/popup-close-all t))
+    (enfer/popup-restore)))
 
 ;;;###autoload
-(defun doom/popup-close (&optional window)
+(defun enfer/popup-close (&optional window)
   "Find and close WINDOW if it's a popup. If WINDOW is omitted, defaults to
 `selected-window'. The contained buffer is buried, unless it has an :autokill
 property."
   (interactive)
-  (when (doom-popup-p window)
+  (when (enfer-popup-p window)
     (delete-window (or window (selected-window)))))
 
 ;;;###autoload
-(defun doom/popup-close-all (&optional force-p)
+(defun enfer/popup-close-all (&optional force-p)
   "Closes most open popups.
 
 Does not close popups that are :static or don't have an :autoclose property (see
@@ -212,29 +212,29 @@ If FORCE-P is non-nil (or this function is called interactively), ignore popups'
 :autoclose property. This command will never close :static popups."
   (interactive
    (list (called-interactively-p 'interactive)))
-  (when-let* ((popups (doom-popup-windows t)))
-    (let (success doom-popup-remember-history)
-      (setq doom-popup-history (delq nil (mapcar #'doom--popup-data popups)))
+  (when-let* ((popups (enfer-popup-windows t)))
+    (let (success enfer-popup-remember-history)
+      (setq enfer-popup-history (delq nil (mapcar #'enfer--popup-data popups)))
       (dolist (window popups success)
-        (when (or force-p (doom-popup-property :autoclose window))
+        (when (or force-p (enfer-popup-property :autoclose window))
           (delete-window window)
           (setq success t))))))
 
 ;;;###autoload
-(defun doom/popup-kill-all ()
-  "Like `doom/popup-close-all', but kill *all* popups, including :static ones,
+(defun enfer/popup-kill-all ()
+  "Like `enfer/popup-close-all', but kill *all* popups, including :static ones,
 without leaving any trace behind (muahaha)."
   (interactive)
-  (when-let* ((popups (doom-popup-windows)))
-    (let (doom-popup-remember-history)
-      (setq doom-popup-history nil)
+  (when-let* ((popups (enfer-popup-windows)))
+    (let (enfer-popup-remember-history)
+      (setq enfer-popup-history nil)
       (mapc #'delete-window popups))))
 
 ;;;###autoload
-(defun doom/popup-close-maybe ()
+(defun enfer/popup-close-maybe ()
   "Close the current popup *if* its window doesn't have a noesc parameter."
   (interactive)
-  (if (doom-popup-property :noesc)
+  (if (enfer-popup-property :noesc)
       (call-interactively
        (if (featurep 'evil)
            #'evil-force-normal-state
@@ -242,119 +242,119 @@ without leaving any trace behind (muahaha)."
     (quit-restore-window nil 'kill)))
 
 ;;;###autoload
-(defun doom/popup-this-buffer ()
+(defun enfer/popup-this-buffer ()
   "Display currently selected buffer in a popup window."
   (interactive)
-  (doom-popup-buffer (current-buffer) '(:align t :autokill t)))
+  (enfer-popup-buffer (current-buffer) '(:align t :autokill t)))
 
 ;;;###autoload
-(defun doom/popup-toggle-messages ()
+(defun enfer/popup-toggle-messages ()
   "Toggle *Messages* buffer."
   (interactive)
   (if-let* ((win (get-buffer-window "*Messages*")))
-      (doom/popup-close win)
-    (doom-popup-buffer (get-buffer "*Messages*"))))
+      (enfer/popup-close win)
+    (enfer-popup-buffer (get-buffer "*Messages*"))))
 
 ;;;###autoload
-(defun doom/other-popup (count)
+(defun enfer/other-popup (count)
   "Cycle through popup windows. Like `other-window', but for popups."
   (interactive "p")
-  (if-let* ((popups (if (doom-popup-p)
-                        (cdr (memq (selected-window) doom-popup-windows))
-                      (setq doom-popup-other-window (selected-window))
-                      doom-popup-windows)))
+  (if-let* ((popups (if (enfer-popup-p)
+                        (cdr (memq (selected-window) enfer-popup-windows))
+                      (setq enfer-popup-other-window (selected-window))
+                      enfer-popup-windows)))
       (ignore-errors (select-window (nth (mod (1- count) (length popups)) popups)))
-    (unless (eq (selected-window) doom-popup-other-window)
-      (when doom-popup-other-window
-        (select-window doom-popup-other-window t)
+    (unless (eq (selected-window) enfer-popup-other-window)
+      (when enfer-popup-other-window
+        (select-window enfer-popup-other-window t)
         (cl-decf count))
       (when (/= count 0)
         (other-window count)))))
 
 ;;;###autoload
-(defalias 'other-popup #'doom/other-popup)
+(defalias 'other-popup #'enfer/other-popup)
 
 ;;;###autoload
-(defun doom/popup-raise (&optional window)
+(defun enfer/popup-raise (&optional window)
   "Turn a popup window into a normal window."
   (interactive)
   (let ((window (or window (selected-window))))
-    (unless (doom-popup-p window)
+    (unless (enfer-popup-p window)
       (user-error "Not a valid popup to raise"))
     (with-selected-window window
-      (doom-popup-mode -1))))
+      (enfer-popup-mode -1))))
 
 ;;;###autoload
-(defun doom/popup-move-top () "See `doom-popup-move'." (interactive) (doom-popup-move 'above))
+(defun enfer/popup-move-top () "See `enfer-popup-move'." (interactive) (enfer-popup-move 'above))
 ;;;###autoload
-(defun doom/popup-move-bottom () "See `doom-popup-move'." (interactive) (doom-popup-move 'below))
+(defun enfer/popup-move-bottom () "See `enfer-popup-move'." (interactive) (enfer-popup-move 'below))
 ;;;###autoload
-(defun doom/popup-move-left () "See `doom-popup-move'." (interactive) (doom-popup-move 'left))
+(defun enfer/popup-move-left () "See `enfer-popup-move'." (interactive) (enfer-popup-move 'left))
 ;;;###autoload
-(defun doom/popup-move-right () "See `doom-popup-move'." (interactive) (doom-popup-move 'right))
+(defun enfer/popup-move-right () "See `enfer-popup-move'." (interactive) (enfer-popup-move 'right))
 
 
-;; --- doom-popup-mode --------------------
+;; --- enfer-popup-mode --------------------
 
 ;;;###autoload
-(define-minor-mode doom-popup-mode
+(define-minor-mode enfer-popup-mode
   "Minor mode for popup windows."
   :init-value nil
-  :keymap doom-popup-mode-map
+  :keymap enfer-popup-mode-map
   (let ((window (selected-window)))
-    ;; If `doom-popup-rules' isn't set for some reason, try to set it
-    (setq-local doom-popup-rules (doom-popup-properties window))
+    ;; If `enfer-popup-rules' isn't set for some reason, try to set it
+    (setq-local enfer-popup-rules (enfer-popup-properties window))
     ;; Ensure that buffer-opening functions/commands (like
     ;; `switch-to-buffer-other-window' won't use this window).
-    (set-window-parameter window 'no-other-window doom-popup-mode)
+    (set-window-parameter window 'no-other-window enfer-popup-mode)
     ;; Makes popup window resist interactively changing its buffer.
-    (set-window-dedicated-p window doom-popup-mode)
-    (cond (doom-popup-mode
-           (when doom-popup-no-fringes
+    (set-window-dedicated-p window enfer-popup-mode)
+    (cond (enfer-popup-mode
+           (when enfer-popup-no-fringes
              (set-window-fringes window 0 0 fringes-outside-margins))
            ;; Save metadata into window parameters so it can be saved by window
            ;; config persisting plugins like workgroups or persp-mode.
-           (set-window-parameter window 'popup (or doom-popup-rules t))
-           (when doom-popup-rules
-             (cl-loop for param in doom-popup-window-parameters
-                      when (plist-get doom-popup-rules param)
+           (set-window-parameter window 'popup (or enfer-popup-rules t))
+           (when enfer-popup-rules
+             (cl-loop for param in enfer-popup-window-parameters
+                      when (plist-get enfer-popup-rules param)
                       do (set-window-parameter window param it))))
 
           (t
-           (when doom-popup-no-fringes
+           (when enfer-popup-no-fringes
              (set-window-fringes window
-                                 doom-fringe-size doom-fringe-size
+                                 enfer-fringe-size enfer-fringe-size
                                  fringes-outside-margins))
            ;; Ensure window parameters are cleaned up
            (set-window-parameter window 'popup nil)
-           (dolist (param doom-popup-window-parameters)
+           (dolist (param enfer-popup-window-parameters)
              (set-window-parameter window param nil))))))
-(put 'doom-popup-mode 'permanent-local t)
+(put 'enfer-popup-mode 'permanent-local t)
 
 ;;;###autoload
-(defun doom|hide-modeline-in-popup ()
+(defun enfer|hide-modeline-in-popup ()
   "Don't show modeline in popup windows without a :modeline rule. If one exists
-and it's a symbol, use `doom-modeline' to grab the format. If non-nil, show the
+and it's a symbol, use `enfer-modeline' to grab the format. If non-nil, show the
 mode-line as normal. If nil (or omitted, by default), then hide the modeline
 entirely."
-  (if doom-popup-mode
-      (let ((modeline (plist-get doom-popup-rules :modeline)))
+  (if enfer-popup-mode
+      (let ((modeline (plist-get enfer-popup-rules :modeline)))
         (cond ((or (eq modeline 'nil)
                    (not modeline))
-               (doom-hide-modeline-mode +1))
+               (enfer-hide-modeline-mode +1))
               ((and (symbolp modeline)
                     (not (eq modeline 't)))
-               (setq-local doom--modeline-format (doom-modeline modeline))
-               (when doom--modeline-format
-                 (doom-hide-modeline-mode +1)))))
-    (when doom-hide-modeline-mode
-      (doom-hide-modeline-mode -1))))
+               (setq-local enfer--modeline-format (enfer-modeline modeline))
+               (when enfer--modeline-format
+                 (enfer-hide-modeline-mode +1)))))
+    (when enfer-hide-modeline-mode
+      (enfer-hide-modeline-mode -1))))
 
 
 ;; --- Advice functions -------------------
 
 ;;;###autoload
-(defun doom*shackle-always-align (plist)
+(defun enfer*shackle-always-align (plist)
   "Ensure popups are always aligned and selected by default. Eliminates the need
 for :align t on every rule."
   (when plist
@@ -368,11 +368,11 @@ for :align t on every rule."
   plist)
 
 ;;;###autoload
-(defun doom*popup-init (orig-fn &rest args)
-  "Initializes a window as a popup window by enabling `doom-popup-mode' in it
-and setting `doom-popup-rules' within it. Returns the window."
-  (unless (doom-popup-p)
-    (setq doom-popup-other-window (selected-window)))
+(defun enfer*popup-init (orig-fn &rest args)
+  "Initializes a window as a popup window by enabling `enfer-popup-mode' in it
+and setting `enfer-popup-rules' within it. Returns the window."
+  (unless (enfer-popup-p)
+    (setq enfer-popup-other-window (selected-window)))
   (let* ((target (car args))
          (plist (or (nth 2 args)
                     (cond ((windowp target)
@@ -384,33 +384,33 @@ and setting `doom-popup-rules' within it. Returns the window."
          (buffer (get-buffer target))
          (window-min-height (if (plist-get plist :modeline) 4 2))
          window)
-    (when (and (doom-real-buffer-p buffer)
+    (when (and (enfer-real-buffer-p buffer)
                (get-buffer-window-list buffer nil t))
       (setq plist (append (list :autokill t) plist))
       (setcar args (clone-indirect-buffer (buffer-name target) nil t)))
     (unless (setq window (apply orig-fn args))
       (error "No popup window was found for %s: %s" target plist))
-    (cl-pushnew window doom-popup-windows :test #'eq)
+    (cl-pushnew window enfer-popup-windows :test #'eq)
     (with-selected-window window
       (unless (eq plist t)
-        (setq-local doom-popup-rules plist))
-      (doom-popup-mode +1)
+        (setq-local enfer-popup-rules plist))
+      (enfer-popup-mode +1)
       (when (plist-get plist :autofit)
-        (doom-popup-fit-to-buffer window)))
+        (enfer-popup-fit-to-buffer window)))
     window))
 
 ;;;###autoload
-(defun doom*popups-save (orig-fn &rest args)
+(defun enfer*popups-save (orig-fn &rest args)
   "Sets aside all popups before executing the original function, usually to
 prevent the popup(s) from messing up the UI (or vice versa)."
   (save-popups! (apply orig-fn args)))
 
 ;;;###autoload
-(defun doom*delete-popup-window (&optional window)
+(defun enfer*delete-popup-window (&optional window)
   "Ensure that popups are deleted properly, and killed if they have :autokill
 properties."
   (or window (setq window (selected-window)))
-  (when (doom-popup-p window)
-    (setq doom-popup-windows (delq window doom-popup-windows))
-    (when doom-popup-remember-history
-      (setq doom-popup-history (list (doom--popup-data window))))))
+  (when (enfer-popup-p window)
+    (setq enfer-popup-windows (delq window enfer-popup-windows))
+    (when enfer-popup-remember-history
+      (setq enfer-popup-history (list (enfer--popup-data window))))))

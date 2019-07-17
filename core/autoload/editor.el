@@ -1,7 +1,7 @@
 ;;; core/autoload/editor.el -*- lexical-binding: t; -*-
 
 ;;;###autoload
-(defun doom/sudo-find-file (file)
+(defun enfer/sudo-find-file (file)
   "Open FILE as root."
   (interactive
    (list (read-file-name "Open as root: ")))
@@ -10,13 +10,13 @@
                (concat "/sudo:root@localhost:" file))))
 
 ;;;###autoload
-(defun doom/sudo-this-file ()
+(defun enfer/sudo-this-file ()
   "Open the current file as root."
   (interactive)
-  (doom/sudo-find-file (file-truename buffer-file-name)))
+  (enfer/sudo-find-file (file-truename buffer-file-name)))
 
 ;;;###autoload
-(defun doom/backward-to-bol-or-indent ()
+(defun enfer/backward-to-bol-or-indent ()
   "Move back to the current line's indentation. If already there, move to the
 beginning of the line instead. If at bol, do nothing."
   (interactive)
@@ -30,7 +30,7 @@ beginning of the line instead. If at bol, do nothing."
              (beginning-of-visual-line))))))
 
 ;;;###autoload
-(defun doom/forward-to-last-non-comment-or-eol ()
+(defun enfer/forward-to-last-non-comment-or-eol ()
   "Move forward to the last non-blank character in the line, ignoring comments
 and trailing whitespace. If already there, move to the real end of the line.
 If already there, do nothing."
@@ -56,14 +56,14 @@ If already there, do nothing."
       (unless (= eol point)
         (funcall goto-char-fn eoc)))))
 
-(defun doom--surrounded-p ()
+(defun enfer--surrounded-p ()
   (and (looking-back "[[{(]\\(\s+\\|\n\\)?\\(\s\\|\t\\)*" (line-beginning-position))
        (let* ((whitespace (match-string 1))
               (match-str (concat whitespace (match-string 2) "[])}]")))
          (looking-at-p match-str))))
 
 ;;;###autoload
-(defun doom/dumb-indent ()
+(defun enfer/dumb-indent ()
   "Inserts a tab character (or spaces x tab-width)."
   (interactive)
   (if indent-tabs-mode
@@ -73,7 +73,7 @@ If already there, do nothing."
       (insert (make-string spaces ? )))))
 
 ;;;###autoload
-(defun doom/dumb-dedent ()
+(defun enfer/dumb-dedent ()
   "Dedents the current line."
   (interactive)
   (if indent-tabs-mode
@@ -89,7 +89,7 @@ If already there, do nothing."
                 (- tab-width movement)))))))))
 
 ;;;###autoload
-(defun doom/backward-kill-to-bol-and-indent ()
+(defun enfer/backward-kill-to-bol-and-indent ()
   "Kill line to the first non-blank character. If invoked again
 afterwards, kill line to column 1."
   (interactive)
@@ -103,7 +103,7 @@ afterwards, kill line to column 1."
       (indent-according-to-mode))))
 
 ;;;###autoload
-(defun doom/backward-delete-whitespace-to-column ()
+(defun enfer/backward-delete-whitespace-to-column ()
   "Delete back to the previous column of whitespace, or as much whitespace as
 possible, or just one char if that's not possible."
   (interactive)
@@ -144,26 +144,26 @@ possible, or just one char if that's not possible."
           (t (call-interactively delete-backward-char)))))
 
 ;;;###autoload
-(defun doom/inflate-space-maybe ()
+(defun enfer/inflate-space-maybe ()
   "Checks if point is surrounded by {} [] () delimiters and adds a
 space on either side of the point if so."
   (interactive)
   (let ((command (or (command-remapping #'self-insert-command)
                      #'self-insert-command)))
-    (cond ((doom--surrounded-p)
+    (cond ((enfer--surrounded-p)
            (call-interactively command)
            (save-excursion (call-interactively command)))
           (t
            (call-interactively command)))))
 
 ;;;###autoload
-(defun doom/deflate-space-maybe ()
+(defun enfer/deflate-space-maybe ()
   "Checks if point is surrounded by {} [] () delimiters, and deletes
 spaces on either side of the point if so. Resorts to
-`doom/backward-delete-whitespace-to-column' otherwise."
+`enfer/backward-delete-whitespace-to-column' otherwise."
   (interactive)
   (save-match-data
-    (if (doom--surrounded-p)
+    (if (enfer--surrounded-p)
         (let ((whitespace-match (match-string 1)))
           (cond ((not whitespace-match)
                  (call-interactively #'delete-backward-char))
@@ -175,10 +175,10 @@ spaces on either side of the point if so. Resorts to
                  (call-interactively #'delete-backward-char)
                  (save-excursion (call-interactively #'delete-char)))
                 (t (just-one-space 0))))
-      (doom/backward-delete-whitespace-to-column))))
+      (enfer/backward-delete-whitespace-to-column))))
 
 ;;;###autoload
-(defun doom/newline-and-indent ()
+(defun enfer/newline-and-indent ()
   "Inserts a newline and possibly indents it. Also continues comments if
 executed from a commented line; handling special cases for certain languages
 with weak native support."
@@ -207,7 +207,7 @@ with weak native support."
          (indent-according-to-mode))))
 
 ;;;###autoload
-(defun doom/retab (&optional beg end)
+(defun enfer/retab (&optional beg end)
   "Changes all tabs to spaces or spaces to tabs, so that indentation is
 consistent throughout a selected region, depending on `indent-tab-mode'."
   (interactive "r")
@@ -219,7 +219,7 @@ consistent throughout a selected region, depending on `indent-tab-mode'."
     (untabify beg end)))
 
 ;;;###autoload
-(defun doom/narrow-buffer (beg end &optional clone-p)
+(defun enfer/narrow-buffer (beg end &optional clone-p)
   "Restrict editing in this buffer to the current region, indirectly. With CLONE-P,
 clone the buffer and hard-narrow the selection. If mark isn't active, then widen
 the buffer (if narrowed).
@@ -231,16 +231,16 @@ Inspired from http://demonastery.org/2013/04/emacs-evil-narrow-region/"
          (when clone-p
            (let ((old-buf (current-buffer)))
              (switch-to-buffer (clone-indirect-buffer nil nil))
-             (setq doom-buffer--narrowed-origin old-buf)))
+             (setq enfer-buffer--narrowed-origin old-buf)))
          (narrow-to-region beg end))
-        (doom-buffer--narrowed-origin
+        (enfer-buffer--narrowed-origin
          (kill-this-buffer)
-         (switch-to-buffer doom-buffer--narrowed-origin)
-         (setq doom-buffer--narrowed-origin nil))
+         (switch-to-buffer enfer-buffer--narrowed-origin)
+         (setq enfer-buffer--narrowed-origin nil))
         (t
          (widen))))
 
 ;;;###autoload
-(defun doom|enable-delete-trailing-whitespace ()
+(defun enfer|enable-delete-trailing-whitespace ()
   "Attaches `delete-trailing-whitespace' to a buffer-local `before-save-hook'."
   (add-hook 'before-save-hook #'delete-trailing-whitespace nil t))

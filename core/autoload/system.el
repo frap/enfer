@@ -1,7 +1,7 @@
 ;;; core/autoload/system.el -*- lexical-binding: t; -*-
 
 ;;;###autoload
-(defun doom-system-os (&optional os)
+(defun enfer-system-os (&optional os)
   "Returns the OS: arch, debian, macos, general linux, cygwin or windows. If OS
 is given, returns t if it matches the current system, and nil otherwise."
   (let* ((gnu-linux-p (eq system-type 'gnu/linux))
@@ -20,30 +20,30 @@ is given, returns t if it matches the current system, and nil otherwise."
         type)))
 
 ;;;###autoload
-(defun doom-sh (command &rest args)
-  "Runs a shell command and prints any output to the DOOM buffer."
+(defun enfer-sh (command &rest args)
+  "Runs a shell command and prints any output to the ENFER buffer."
   (let ((cmd-list (split-string command " ")))
     (cond ((equal (car cmd-list) "sudo")
-           (apply #'doom-sudo (string-join (cdr cmd-list) " ") args))
+           (apply #'enfer-sudo (string-join (cdr cmd-list) " ") args))
           ((let ((bin (executable-find "npm")))
              (and (file-exists-p bin)
                   (not (file-writable-p bin))))
-           (apply #'doom-sudo (string-join cmd-list " ") args))
+           (apply #'enfer-sudo (string-join cmd-list " ") args))
           (t
            (princ (shell-command-to-string (apply #'format command args)))))))
 
 (defvar tramp-verbose)
 ;;;###autoload
-(defun doom-sudo (command &rest args)
-  "Like `doom-sh', but runs as root (prompts for password)."
+(defun enfer-sudo (command &rest args)
+  "Like `enfer-sh', but runs as root (prompts for password)."
   (let ((tramp-verbose 2))
-    (with-current-buffer (get-buffer-create "*doom-sudo*")
+    (with-current-buffer (get-buffer-create "*enfer-sudo*")
       (unless (string-prefix-p "/sudo::/" default-directory)
         (cd "/sudo::/"))
       (princ (shell-command-to-string (apply #'format command args))))))
 
 ;;;###autoload
-(defun doom-fetch (fetcher location dest)
+(defun enfer-fetch (fetcher location dest)
   "Clone a remote version-controlled repo at REPO-URL to PATH, if it exists.
 Requires the corresponding client, e.g. git for git repos, hg for mercurial,
 etc."
@@ -65,4 +65,3 @@ etc."
                  #'async-shell-command)
                (format "%s %s %s" bin args (shell-quote-argument dest)))
       (message! "Cloning %s -> %s" location (file-relative-name dest)))))
-

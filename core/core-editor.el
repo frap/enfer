@@ -1,21 +1,32 @@
 ;;; core-editor.el -*- lexical-binding: t; -*-
 
-(defvar doom-large-file-size 1
+(defvar enfer-large-file-size 2
   "Size (in MB) above which the user will be prompted to open the file literally
 to avoid performance issues. Opening literally means that no major or minor
 modes are active and the buffer is read-only.")
 
-(defvar doom-large-file-modes-list
-  '(archive-mode tar-mode jka-compr git-commit-mode image-mode
-    doc-view-mode doc-view-mode-maybe ebrowse-tree-mode pdf-view-mode)
-  "Major modes that `doom|check-large-file' will ignore.")
+(defvar enfer-large-file-modes-list
+  '(fundamental-mode special-mode archive-mode tar-mode jka-compr
+    git-commit-mode image-mode doc-view-mode doc-view-mode-maybe
+    ebrowse-tree-mode pdf-view-mode tags-table-mode)
+  "Major modes that `enfer|check-large-file' will ignore.")
+
+(defvar-local enfer-inhibit-indent-detection nil
+  "A buffer-local flag that indicates whether `dtrt-indent' should try to detect
+indentation settings or not. This should be set by editorconfig if it
+successfully sets indent_style/indent_size.")
+
+(defvar enfer-detect-indentation-excluded-modes '(fundamental-mode)
+  "A list of major modes in which indentation should be automatically
+detected.")
 
 (setq-default
+ large-file-warning-threshold 15000000
  vc-follow-symlinks t
  ;; Save clipboard contents into kill-ring before replacing them
  save-interprogram-paste-before-kill t
  ;; Bookmarks
- bookmark-default-file (concat doom-etc-dir "bookmarks")
+ bookmark-default-file (concat enfer-etc-dir "bookmarks")
  bookmark-save-flag t
  ;; Formatting
  delete-trailing-lines nil
@@ -23,11 +34,13 @@ modes are active and the buffer is read-only.")
  sentence-end-double-space nil
  word-wrap t
  ;; Scrolling
- hscroll-margin 1
+ hscroll-margin 2
  hscroll-step 1
  scroll-conservatively 1001
  scroll-margin 0
  scroll-preserve-screen-position t
+ mouse-wheel-scroll-amount '(5 ((shift) . 2))
+ mouse-wheel-progressive-speed nil ; don't accelerate scrolling
  ;; Whitespace (see `editorconfig')
  indent-tabs-mode nil
  require-final-newline t
@@ -36,208 +49,327 @@ modes are active and the buffer is read-only.")
  tabify-regexp "^\t* [ \t]+" ; for :retab
  ;; Wrapping
  truncate-lines t
- truncate-partial-width-windows 50
- ;; whitespace-mode
- whitespace-line-column fill-column
- whitespace-style
- '(face indentation tabs tab-mark spaces space-mark newline newline-mark
-   trailing lines-tail)
- whitespace-display-mappings
- '((tab-mark ?\t [?› ?\t])
-   (newline-mark ?\n [?¬ ?\n])
-   (space-mark ?\  [?·] [?.])))
+ truncate-partial-width-windows 50)
 
-;; ediff
-(setq ediff-diff-options "-w"
-      ediff-split-window-function #'split-window-horizontally
-      ediff-window-setup-function #'ediff-setup-windows-plain)
+;; Remove hscroll-margin in shells, otherwise it causes jumpiness
+(setq-hook! '(eshell-mode-hook term-mode-hook) hscroll-margin 0)
 
-(defun doom|dont-kill-scratch-buffer ()
-  "Don't kill the scratch buffer."
-  (or (not (string= (buffer-name) "*scratch*"))
-      (ignore (bury-buffer))))
-(add-hook 'kill-buffer-query-functions #'doom|dont-kill-scratch-buffer)
-
-;; temporary windows often have q bound to `quit-window', which only buries the
-;; contained buffer. I rarely don't want that buffer killed, so...
-(defun doom*quit-window (orig-fn &optional kill window)
-  (funcall orig-fn (not kill) window))
-(advice-add #'quit-window :around #'doom*quit-window)
-
-(defun doom|check-large-file ()
-  "Check if the buffer's file is large (see `doom-large-file-size'). If so, ask
-for confirmation to open it literally (read-only, disabled undo and in
-fundamental-mode) for performance sake."
-  (let* ((filename (buffer-file-name))
-         (size (nth 7 (file-attributes filename))))
-    (when (and (not (memq major-mode doom-large-file-modes-list))
-               size (> size (* 1024 1024 doom-large-file-size))
-               (y-or-n-p
-                (format (concat "%s is a large file, open literally to "
-                                "avoid performance issues?")
-                        (file-relative-name filename))))
+(defun enfer*optimize-literal-mode-for-large-files (buffer)
+  (with-current-buffer buffer
+    (when find-file-literally
       (setq buffer-read-only t)
-      (buffer-disable-undo)
-      (fundamental-mode))))
-(add-hook 'find-file-hook #'doom|check-large-file)
-
-(push '("/LICENSE$" . text-mode) auto-mode-alist)
+      (buffer-disable-undo))
+    buffer))
+(advice-add #'find-file-noselect-1 :filter-return #'enfer*optimize-literal-mode-for-large-files)
 
 
 ;;
-;; Built-in plugins
+;;; Extra file extensions to support
+
+(push '("/LICENSE\\'" . text-mode) auto-mode-alist)
+
+
 ;;
+;;; Built-in plugins
 
-;; revert buffers for changed files
-(global-auto-revert-mode 1)
-(setq auto-revert-verbose nil)
+(def-package! autorevert
+  ;; revert buffers when their files/state have changed
+  :hook (focus-in . enfer|auto-revert-buffers)
+  :hook (after-save . enfer|auto-revert-buffers)
+  :hook (enfer-switch-buffer . enfer|auto-revert-buffer)
+  :hook (enfer-switch-window . enfer|auto-revert-buffer)
+  :config
+  (setq auto-revert-verbose t ; let us know when it happens
+        auto-revert-use-notify nil
+        auto-revert-stop-on-user-input nil)
 
-;; enabled by default in Emacs 25+. No thanks.
-(electric-indent-mode -1)
+  ;; Instead of using `auto-revert-mode' or `global-auto-revert-mode', we employ
+  ;; lazy auto reverting on `focus-in-hook' and `enfer-switch-buffer-hook'.
+  ;;
+  ;; This is because autorevert abuses the heck out of inotify handles which can
+  ;; grind Emacs to a halt if you do expensive IO (outside of Emacs) on the
+  ;; files you have open (like compression). We only really need revert changes
+  ;; when we switch to a buffer or when we focus the Emacs frame.
+  (defun enfer|auto-revert-buffers ()
+    "Auto revert's stale buffers (that are visible)."
+    (unless auto-revert-mode
+      (dolist (buf (enfer-visible-buffers))
+        (with-current-buffer buf
+          (auto-revert-handler)))))
 
-;; savehist / saveplace
-(setq savehist-file (concat doom-cache-dir "savehist")
-      savehist-save-minibuffer-history t
-      savehist-autosave-interval nil ; save on kill only
-      savehist-additional-variables '(kill-ring search-ring regexp-search-ring)
-      save-place-file (concat doom-cache-dir "saveplace"))
-(add-hook! 'doom-init-hook #'(savehist-mode save-place-mode))
+  (defun enfer|auto-revert-buffer ()
+    "Auto revert current buffer, if necessary."
+    (unless auto-revert-mode
+      (auto-revert-handler))))
 
-;; Keep track of recently opened files
 (def-package! recentf
-  :hook (doom-init . recentf-mode)
+  ;; Keep track of recently opened files
+  :defer-incrementally (easymenu tree-widget timer)
+  :after-call after-find-file
+  :commands recentf-open-files
   :config
-  (setq recentf-save-file (concat doom-cache-dir "recentf")
+  (setq recentf-save-file (concat enfer-cache-dir "recentf")
+        recentf-auto-cleanup 'never
         recentf-max-menu-items 0
-        recentf-max-saved-items 300
-        recentf-filename-handlers '(file-truename)
+        recentf-max-saved-items 200
         recentf-exclude
-        (list "^/tmp/" "^/ssh:" "\\.?ido\\.last$" "\\.revive$" "/TAGS$"
-              "^/var/folders/.+$"
-              ;; ignore private DOOM temp files (but not all of them)
-              (concat "^" (file-truename doom-local-dir)))))
+        (list "\\.\\(?:gz\\|gif\\|svg\\|png\\|jpe?g\\)$" "^/tmp/" "^/ssh:"
+              "\\.?ido\\.last$" "\\.revive$" "/TAGS$" "^/var/folders/.+$"
+              ;; ignore private ENFER temp files
+              (lambda (path)
+                (ignore-errors (file-in-directory-p path enfer-local-dir)))))
 
+  (defun enfer--recent-file-truename (file)
+    (if (or (file-remote-p file nil t)
+            (not (file-remote-p file)))
+        (file-truename file)
+      file))
+  (setq recentf-filename-handlers '(enfer--recent-file-truename abbreviate-file-name))
 
-;;
-;; Core Plugins
-;;
+  (defun enfer|recentf-touch-buffer ()
+    "Bump file in recent file list when it is switched or written to."
+    (when buffer-file-name
+      (recentf-add-file buffer-file-name))
+    ;; Return nil for `write-file-functions'
+    nil)
+  (add-hook 'enfer-switch-window-hook #'enfer|recentf-touch-buffer)
+  (add-hook 'write-file-functions #'enfer|recentf-touch-buffer)
 
-;; Handles whitespace (tabs/spaces) settings externally. This way projects can
-;; specify their own formatting rules.
-(def-package! editorconfig
+  (defun enfer|recentf-add-dired-directory ()
+    "Add dired directory to recentf file list."
+    (recentf-add-file default-directory))
+  (add-hook 'dired-mode-hook #'enfer|recentf-add-dired-directory)
+
+  (unless noninteractive
+    (add-hook 'kill-emacs-hook #'recentf-cleanup)
+    (quiet! (recentf-mode +1))))
+
+(def-package! savehist
+  ;; persist variables across sessions
+  :defer-incrementally (custom)
+  :after-call post-command-hook
   :config
-  (add-hook 'doom-init-hook #'editorconfig-mode)
+  (setq savehist-file (concat enfer-cache-dir "savehist")
+        savehist-save-minibuffer-history t
+        savehist-autosave-interval nil ; save on kill only
+        savehist-additional-variables '(kill-ring search-ring regexp-search-ring))
+  (savehist-mode +1)
 
-  ;; editorconfig cannot procure the correct settings for extension-less files.
-  ;; Executable scripts with a shebang line, for example. So why not use Emacs'
-  ;; major mode to drop editorconfig a hint? This is accomplished by temporarily
-  ;; appending an extension to `buffer-file-name' when we talk to editorconfig.
-  (defvar doom-editorconfig-mode-alist
-    '((sh-mode     . "sh")
-      (python-mode . "py")
-      (ruby-mode   . "rb")
-      (perl-mode   . "pl")
-      (php-mode    . "php"))
-    "An alist mapping major modes to extensions. Used by
-`doom*editorconfig-smart-detection' to give editorconfig filetype hints.")
+  (defun enfer|unpropertize-kill-ring ()
+    "Remove text properties from `kill-ring' in the interest of shrinking the
+savehist file."
+    (setq kill-ring (cl-loop for item in kill-ring
+                             if (stringp item)
+                             collect (substring-no-properties item)
+                             else if item collect it)))
+  (add-hook 'kill-emacs-hook #'enfer|unpropertize-kill-ring))
 
-  (defun doom*editorconfig-smart-detection (orig-fn &rest args)
-    "Retrieve the properties for the current file. If it doesn't have an
-extension, try to guess one."
-    (let ((buffer-file-name
-           (if (file-name-extension buffer-file-name)
-               buffer-file-name
-             (format "%s%s" buffer-file-name
-                     (let ((ext (cdr (assq major-mode doom-editorconfig-mode-alist))))
-                       (or (and ext (concat "." ext))
-                           ""))))))
+(def-package! saveplace
+  ;; persistent point location in buffers
+  :after-call (after-find-file dired-initial-position-hook)
+  :config
+  (setq save-place-file (concat enfer-cache-dir "saveplace")
+        save-place-forget-unreadable-files t
+        save-place-limit 200)
+  (defun enfer*recenter-on-load-saveplace (&rest _)
+    "Recenter on cursor when loading a saved place."
+    (if buffer-file-name (ignore-errors (recenter))))
+  (advice-add #'save-place-find-file-hook
+              :after-while #'enfer*recenter-on-load-saveplace)
+  (save-place-mode +1))
+
+(def-package! server
+  :when (display-graphic-p)
+  :after-call (pre-command-hook after-find-file)
+  :init
+  (when-let (name (getenv "EMACS_SERVER_NAME"))
+    (setq server-name name))
+  :config
+  (unless (server-running-p)
+    (server-start)))
+
+
+;;
+;;; Packages
+
+(def-package! better-jumper
+  :after-call (pre-command-hook)
+  :init
+  (global-set-key [remap evil-jump-forward]  #'better-jumper-jump-forward)
+  (global-set-key [remap evil-jump-backward] #'better-jumper-jump-backward)
+  :config
+  (better-jumper-mode +1)
+  (add-hook 'better-jumper-post-jump-hook #'recenter)
+
+  (defun enfer*set-jump (orig-fn &rest args)
+    "Set a jump point and ensure ORIG-FN doesn't set any new jump points."
+    (better-jumper-set-jump (if (markerp (car args)) (car args)))
+    (let ((evil--jumps-jumping t)
+          (better-jumper--jumping t))
       (apply orig-fn args)))
-  (advice-add #'editorconfig-call-editorconfig-exec :around #'doom*editorconfig-smart-detection)
 
-  ;; Editorconfig makes indentation too rigid in Lisp modes, so tell
-  ;; editorconfig to ignore indentation. I prefer dynamic indentation support
-  ;; built into Emacs.
-  (dolist (mode '(emacs-lisp-mode lisp-mode))
-    (setq editorconfig-indentation-alist
-      (assq-delete-all mode editorconfig-indentation-alist)))
+  (defun enfer*set-jump-maybe (orig-fn &rest args)
+    "Set a jump point if ORIG-FN returns non-nil."
+    (let ((origin (point-marker))
+          (result
+           (let* ((evil--jumps-jumping t)
+                  (better-jumper--jumping t))
+             (apply orig-fn args))))
+      (unless result
+        (with-current-buffer (marker-buffer origin)
+          (better-jumper-set-jump
+           (if (markerp (car args))
+               (car args)
+             origin))))
+      result))
 
-  (defvar whitespace-style)
-  (defun doom|editorconfig-whitespace-mode-maybe (&rest _)
-    "Show whitespace-mode when file uses TABS (ew)."
-    (when indent-tabs-mode
-      (let ((whitespace-style '(face tabs tab-mark trailing-lines tail)))
-        (whitespace-mode +1))))
-  (add-hook 'editorconfig-custom-hooks #'doom|editorconfig-whitespace-mode-maybe))
+  (defun enfer|set-jump ()
+    "Run `better-jumper-set-jump' but return nil, for short-circuiting hooks."
+    (better-jumper-set-jump)
+    nil))
 
-(def-package! editorconfig-conf-mode
-  :mode "\\.?editorconfig$")
-
-;; Auto-close delimiters and blocks as you type
-(def-package! smartparens
-  :hook (doom-init . smartparens-global-mode)
-  :config
-  (require 'smartparens-config)
-
-  (setq sp-autowrap-region nil ; let evil-surround handle this
-        sp-highlight-pair-overlay nil
-        sp-cancel-autoskip-on-backward-movement nil
-        sp-show-pair-delay 0
-        sp-max-pair-length 3)
-
-  ;; disable smartparens in evil-mode's replace state (they conflict)
-  (add-hook 'evil-replace-state-entry-hook #'turn-off-smartparens-mode)
-  (add-hook 'evil-replace-state-exit-hook  #'turn-on-smartparens-mode)
-
-  (sp-local-pair '(xml-mode nxml-mode php-mode) "<!--" "-->"
-                 :post-handlers '(("| " "SPC"))))
-
-;; Branching undo
-(def-package! undo-tree
-  :config
-  (add-hook 'doom-init-hook #'global-undo-tree-mode)
-  ;; persistent undo history is known to cause undo history corruption, which
-  ;; can be very destructive! So disable it!
-  (setq undo-tree-auto-save-history nil
-        undo-tree-history-directory-alist
-        (list (cons "." (concat doom-cache-dir "undo-tree-hist/")))))
-
-
-;;
-;; Autoloaded Plugins
-;;
-
-(def-package! ace-link
-  :commands (ace-link-help ace-link-org))
-
-(def-package! avy
-  :commands (avy-goto-char-2 avy-goto-line)
-  :config
-  (setq avy-all-windows nil
-        avy-background t))
 
 (def-package! command-log-mode
-  :commands (command-log-mode global-command-log-mode)
+  :commands global-command-log-mode
   :config
-  (set! :popup "*command-log*" :size 40 :align 'right :noselect t)
   (setq command-log-mode-auto-show t
-        command-log-mode-open-log-turns-on-mode t))
+        command-log-mode-open-log-turns-on-mode nil
+        command-log-mode-is-global t
+        command-log-mode-window-size 50))
 
-(def-package! expand-region
-  :commands (er/expand-region er/contract-region er/mark-symbol er/mark-word))
 
-(def-package! help-fns+ ; Improved help commands
-  :commands (describe-buffer describe-command describe-file
-             describe-keymap describe-option describe-option-of-type))
+(def-package! dtrt-indent
+  ;; Automatic detection of indent settings
+  :unless noninteractive
+  :defer t
+  :init
+  (defun enfer|detect-indentation ()
+    (unless (or (not after-init-time)
+                enfer-inhibit-indent-detection
+                (member (substring (buffer-name) 0 1) '(" " "*"))
+                (memq major-mode enfer-detect-indentation-excluded-modes))
+      ;; Don't display messages in the echo area, but still log them
+      (let ((inhibit-message (not enfer-debug-mode)))
+        (dtrt-indent-mode +1))))
+  (add-hook! '(change-major-mode-after-body-hook read-only-mode-hook)
+    #'enfer|detect-indentation)
+  :config
+  (setq dtrt-indent-run-after-smie t)
 
-(def-package! pcre2el
-  :commands rxt-quote-pcre)
+  ;; always keep tab-width up-to-date
+  (push '(t tab-width) dtrt-indent-hook-generic-mapping-list)
 
-(def-package! smart-forward
-  :commands (smart-up smart-down smart-backward smart-forward))
+  (defvar dtrt-indent-run-after-smie)
+  (defun enfer*fix-broken-smie-modes (orig-fn arg)
+    "Some smie modes throw errors when trying to guess their indentation, like
+`nim-mode'. This prevents them from leaving Emacs in a broken state."
+    (let ((dtrt-indent-run-after-smie dtrt-indent-run-after-smie))
+      (cl-letf* ((old-smie-config-guess (symbol-function 'smie-config-guess))
+                 ((symbol-function 'smie-config-guess)
+                  (lambda ()
+                    (condition-case e (funcall old-smie-config-guess)
+                      (error (setq dtrt-indent-run-after-smie t)
+                             (message "[WARNING] Indent detection: %s"
+                                      (error-message-string e))
+                             (message "")))))) ; warn silently
+        (funcall orig-fn arg))))
+  (advice-add #'dtrt-indent-mode :around #'enfer*fix-broken-smie-modes))
 
-(def-package! wgrep
-  :commands (wgrep-setup wgrep-change-to-wgrep-mode)
-  :config (setq wgrep-auto-save-buffer t))
+
+(def-package! helpful
+  ;; a better *help* buffer
+  :commands helpful--read-symbol
+  :init
+ ;; (bind-key
+ ;;   [remap describe-function] #'helpful-callable
+ ;;   [remap describe-command]  #'helpful-command
+ ;;   [remap describe-variable] #'helpful-variable
+ ;;   [remap describe-key]      #'helpful-key
+ ;;   [remap describe-symbol]   #'enfer/describe-symbol)
+
+  (after! apropos
+    ;; patch apropos buttons to call helpful instead of help
+    (dolist (fun-bt '(apropos-function apropos-macro apropos-command))
+      (button-type-put
+       fun-bt 'action
+       (lambda (button)
+         (helpful-callable (button-get button 'apropos-symbol)))))
+    (dolist (var-bt '(apropos-variable apropos-user-option))
+      (button-type-put
+       var-bt 'action
+       (lambda (button)
+         (helpful-variable (button-get button 'apropos-symbol)))))))
+
+
+;;;###package imenu
+(add-hook 'imenu-after-jump-hook #'recenter)
+
+(defun zz/sp-enclose-next-sexp (num) (interactive "p") (insert-parentheses (or num 1)))
+(def-package! smartparens
+  ;; Auto-close delimiters and blocks as you type. It's more powerful than that,
+  ;; but that is all Enfer uses it for.
+  :after-call (enfer-switch-buffer-hook after-find-file)
+  :commands (sp-pair sp-local-pair sp-with-modes sp-point-in-comment sp-point-in-string)
+   :bind (("M-n" . sp-next-sexp)
+         ("M-p" . sp-previous-sexp)
+         ("M-f" . sp-forward-sexp)
+         ("M-b" . sp-backward-sexp))
+  :config
+  (require 'smartparens-config)
+  (sp-pair "=" "=" :actions '(wrap))
+  (sp-pair "+" "+" :actions '(wrap))
+  (sp-pair "<" ">" :actions '(wrap))
+  (sp-pair "$" "$" :actions '(wrap))
+  ;; Close a backtick with another backtick in clojure-mode
+  (sp-local-pair 'clojure-mode "`" "`" :when '(sp-in-string-p))
+  (sp-local-pair 'emacs-lisp-mode "`" nil :when '(sp-in-string-p))
+  :hook
+  ;; (after-init . smartparens-global-mode)
+  ((clojure-mode
+    emacs-lisp-mode
+    lisp-mode) . smartparens-strict-mode)
+  (smartparens-mode  . sp-use-paredit-bindings)
+  (smartparens-mode  . (lambda () (local-set-key (kbd "M-(") 'zz/sp-enclose-next-sexp)))
+
+  )
+
+
+(def-package! undo-tree
+  ;; Branching & persistent undo
+  :after-call (enfer-switch-buffer-hook after-find-file)
+  :config
+  (setq undo-tree-auto-save-history nil ; disable because unstable
+        ;; undo-in-region is known to cause undo history corruption, which can
+        ;; be very destructive! Disabling it deters the error, but does not fix
+        ;; it entirely!
+        undo-tree-enable-undo-in-region nil
+        undo-tree-history-directory-alist
+        `(("." . ,(concat enfer-cache-dir "undo-tree-hist/"))))
+
+  (when (executable-find "zstd")
+    (defun enfer*undo-tree-make-history-save-file-name (file)
+      (concat file ".zst"))
+    (advice-add #'undo-tree-make-history-save-file-name :filter-return
+                #'enfer*undo-tree-make-history-save-file-name))
+
+  (defun enfer*strip-text-properties-from-undo-history (&rest _)
+    (dolist (item buffer-undo-list)
+      (and (consp item)
+           (stringp (car item))
+           (setcar item (substring-no-properties (car item))))))
+  (advice-add #'undo-list-transfer-to-tree :before #'enfer*strip-text-properties-from-undo-history)
+
+  (global-undo-tree-mode +1))
+
+
+(def-package! ws-butler
+  ;; a less intrusive `delete-trailing-whitespaces' on save
+  :after-call (after-find-file)
+  :config
+  (setq ws-butler-global-exempt-modes
+        (append ws-butler-global-exempt-modes
+                '(special-mode comint-mode term-mode eshell-mode)))
+  (ws-butler-global-mode))
 
 (provide 'core-editor)
 ;;; core-editor.el ends here

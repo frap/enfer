@@ -14,7 +14,7 @@
 
 ;;
 (def-test! set-mode-name
-  (let ((doom-major-mode-names '((text-mode . "abc")
+  (let ((enfer-major-mode-names '((text-mode . "abc")
                                  (lisp-mode . (lambda () "xyz"))
                                  (js-mode . t))))
     (text-mode)
@@ -25,7 +25,7 @@
 
 (def-test! protect-visible-buffers
   (with-temp-windows!!
-    (let ((kill-buffer-query-functions '(doom|protect-visible-buffers)))
+    (let ((kill-buffer-query-functions '(enfer|protect-visible-buffers)))
       (switch-to-buffer a) (split-window)
       (switch-to-buffer b) (split-window)
       (switch-to-buffer a)

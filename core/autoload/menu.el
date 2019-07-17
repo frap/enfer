@@ -3,36 +3,36 @@
 ;; Command dispatchers: basically M-x, but context sensitive, customizable and
 ;; persistent across Emacs sessions.
 
-(defvar doom-menu-display-fn #'doom-menu-read-default
+(defvar enfer-menu-display-fn #'enfer-menu-read-default
   "The method to use to prompt the user with the menu. This takes two arguments:
 PROMPT (a string) and COMMAND (a list of command plists; see `def-menu!').")
 
-(defun doom-menu-read-default (prompt commands)
+(defun enfer-menu-read-default (prompt commands)
   "Default method for displaying a completion-select prompt."
   (completing-read prompt (mapcar #'car commands)))
 
-(defun doom--menu-read (prompt commands)
-  (if-let* ((choice (funcall doom-menu-display-fn prompt commands)))
+(defun enfer--menu-read (prompt commands)
+  (if-let* ((choice (funcall enfer-menu-display-fn prompt commands)))
       (cdr (assoc choice commands))
     (user-error "Aborted")))
 
-(defun doom--menu-exec (plist)
+(defun enfer--menu-exec (plist)
   (let ((command (plist-get plist :exec))
         (cwd     (plist-get plist :cwd)))
     (let ((default-directory
-            (cond ((eq cwd t) (doom-project-root))
+            (cond ((eq cwd t) (enfer-project-root))
                   ((stringp cwd) cwd)
                   (t default-directory))))
       (cond ((stringp command)
              (with-current-buffer (get-buffer-create "*compilation*")
-               (setq command (doom-resolve-vim-path command))
+               (setq command (enfer-resolve-vim-path command))
                (save-window-excursion
                  (compile command))
                (setq header-line-format
                      (concat (propertize "$ " 'face 'font-lock-doc-face)
                              (propertize command 'face 'font-lock-preprocessor-face)))
-               (doom-resize-window
-                (doom-popup-buffer (current-buffer)
+               (enfer-resize-window
+                (enfer-popup-buffer (current-buffer)
                   '(:autokill t :autoclose t)) 12)))
             ((or (symbolp command)
                  (functionp command))
@@ -81,11 +81,11 @@ lisp form.
          (interactive)
          (unless ,commands-var
            (user-error "The '%s' menu is empty" ',name))
-         (doom--menu-exec
-          (or (doom--menu-read
+         (enfer--menu-exec
+          (or (enfer--menu-read
                ,prop-prompt
                (or (cl-remove-if-not
-                    (let ((project-root (doom-project-root)))
+                    (let ((project-root (enfer-project-root)))
                       (lambda (cmd)
                         (let ((plist (cdr cmd)))
                           (and (cond ((not (plist-member plist :region)) t)
@@ -101,4 +101,3 @@ lisp form.
                     ,commands-var)
                    (user-error "No commands available here")))
               (user-error "No command selected")))))))
-
