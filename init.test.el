@@ -3,17 +3,16 @@
 (require 'core (concat user-emacs-directory "core/core"))
 
 (doom! :feature
-       evil
-       workspaces
 
        :completion
        company
 
        :ui
        doom-dashboard
+       workspaces
 
        :tools
-       password-store
+       pass
 
        :lang
        org

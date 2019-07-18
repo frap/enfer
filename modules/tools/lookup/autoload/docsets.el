@@ -27,7 +27,7 @@ Example:
 Used by `+lookup/in-docsets' and `+lookup/documentation'."
   (declare (indent defun))
   (let ((action (if (keywordp (car docsets)) (pop docsets))))
-    (dolist (mode (doom-enlist modes))
+    (dolist (mode (enfer-enlist modes))
       (let ((hook (intern (format "%s-hook" mode)))
             (fn (make-symbol (format "+lookup|init--%s-%s" (or action "set") mode))))
         (if (null docsets)

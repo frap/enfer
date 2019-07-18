@@ -43,7 +43,7 @@ This marks a foldable marker for `outline-minor-mode' in elisp buffers.")
     outline-regexp +emacs-lisp-outline-regexp)
 
   ;; variable-width indentation is superior in elisp
-  (add-to-list 'doom-detect-indentation-excluded-modes 'emacs-lisp-mode nil #'eq)
+  (add-to-list 'enfer-detect-indentation-excluded-modes 'emacs-lisp-mode nil #'eq)
 
   (add-hook! 'emacs-lisp-mode-hook
     #'(outline-minor-mode
@@ -61,14 +61,14 @@ This marks a foldable marker for `outline-minor-mode' in elisp buffers.")
   ;; Special fontification for elisp
   (font-lock-add-keywords
    'emacs-lisp-mode
-   (append `(;; custom Doom cookies
+   (append `(;; custom Enfer cookies
              ("^;;;###\\(autodef\\|if\\|package\\)[ \n]" (1 font-lock-warning-face t)))
            ;; highlight defined, special variables & functions
            (when +emacs-lisp-enable-extra-fontification
              `((+emacs-lisp-highlight-vars-and-faces . +emacs-lisp--face)))))
 
   ;; Recenter window after following definition
-  (advice-add #'elisp-def :after #'doom*recenter)
+  (advice-add #'elisp-def :after #'enfer*recenter)
 
   (map! :localleader
         :map emacs-lisp-mode-map

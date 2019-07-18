@@ -1,40 +1,40 @@
 ;; -*- no-byte-compile: t; -*-
-;;; ui/doom-dashboard/test/test-doom-dashboard.el
+;;; ui/enfer-dashboard/test/test-enfer-dashboard.el
 
 (require 'core-projects)
 (require 'projectile)
-(require! :ui doom-dashboard)
+(require! :ui enfer-dashboard)
 
-(describe "ui/doom-dashboard"
+(describe "ui/enfer-dashboard"
   :var (default-directory projectile-enable-caching)
   (before-all
     (setq projectile-enable-caching nil
-          doom-fallback-buffer-name +doom-dashboard-name))
+          enfer-fallback-buffer-name +enfer-dashboard-name))
 
   (before-each (projectile-mode +1))
   (after-each  (projectile-mode -1))
 
   (describe "get-pwd"
-    :var (+doom-dashboard--last-cwd)
+    :var (+enfer-dashboard--last-cwd)
     (before-each
-      (setq +doom-dashboard--last-cwd doom-core-dir
-            default-directory doom-core-dir))
+      (setq +enfer-dashboard--last-cwd enfer-core-dir
+            default-directory enfer-core-dir))
     (it "returns the current directory when policy is nil"
-      (let (+doom-dashboard-pwd-policy)
-        (expect (+doom-dashboard--get-pwd) :to-equal default-directory)))
+      (let (+enfer-dashboard-pwd-policy)
+        (expect (+enfer-dashboard--get-pwd) :to-equal default-directory)))
     (it "returns a path if policy is a path"
-      (let ((+doom-dashboard-pwd-policy "~"))
-        (expect (+doom-dashboard--get-pwd) :to-equal (expand-file-name "~"))))
+      (let ((+enfer-dashboard-pwd-policy "~"))
+        (expect (+enfer-dashboard--get-pwd) :to-equal (expand-file-name "~"))))
     (it "returns return value of policy as a function"
-      (let ((+doom-dashboard-pwd-policy (lambda (x) "x")))
-        (expect (+doom-dashboard--get-pwd) :to-equal "x")))
+      (let ((+enfer-dashboard-pwd-policy (lambda (x) "x")))
+        (expect (+enfer-dashboard--get-pwd) :to-equal "x")))
     (it "returns last cwd if policy is 'last"
-      (let ((+doom-dashboard-pwd-policy 'last))
-        (expect (+doom-dashboard--get-pwd) :to-equal doom-core-dir)))
+      (let ((+enfer-dashboard-pwd-policy 'last))
+        (expect (+enfer-dashboard--get-pwd) :to-equal enfer-core-dir)))
     (it "returns last project if policy is 'last-project"
-      (let ((+doom-dashboard-pwd-policy 'last-project))
-        (expect (+doom-dashboard--get-pwd) :to-equal doom-emacs-dir))))
+      (let ((+enfer-dashboard-pwd-policy 'last-project))
+        (expect (+enfer-dashboard--get-pwd) :to-equal enfer-emacs-dir))))
 
   (describe "dashboard-p"
     (it "changes the fallback buffer to the dashboard buffer"
-      (expect (+doom-dashboard-p (doom-fallback-buffer))))))
+      (expect (+enfer-dashboard-p (enfer-fallback-buffer))))))

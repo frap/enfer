@@ -10,13 +10,13 @@ to a pop up buffer."
   (require 'pp)
   (let ((result
          (let ((debug-on-error t)
-               (doom--current-module (ignore-errors (doom-module-from-path buffer-file-name))))
+               (enfer--current-module (ignore-errors (enfer-module-from-path buffer-file-name))))
            (eval (read
                   (concat "(progn "
                           (buffer-substring-no-properties beg end)
                           "\n)"))
                  t)))
-        (buf (get-buffer-create "*doom eval*"))
+        (buf (get-buffer-create "*enfer eval*"))
         (inhibit-read-only t))
     (with-current-buffer buf
       (read-only-mode +1)
@@ -75,8 +75,8 @@ library/userland functions"
   "Lookup THING with `helpful-variable' if it's a variable, `helpful-callable'
 if it's callable, `apropos' otherwise."
   (if thing
-      (doom/describe-symbol thing)
-    (call-interactively #'doom/describe-symbol)))
+      (enfer/describe-symbol thing)
+    (call-interactively #'enfer/describe-symbol)))
 
 ;; `+emacs-lisp-highlight-vars-and-faces' is a potentially expensive function
 ;; and should be byte-compiled, no matter what, to ensure it runs as fast as
@@ -106,7 +106,7 @@ if it's callable, `apropos' otherwise."
 
 ;;;###autoload
 (defun +emacs-lisp|extend-imenu ()
-  "Improve imenu support in `emacs-lisp-mode', including recognition for Doom's API."
+  "Improve imenu support in `emacs-lisp-mode', including recognition for Enfer's API."
   (setq imenu-generic-expression
         `(("Section" "^[ \t]*;;;;*[ \t]+\\([^\n]+\\)" 1)
           ("Evil commands" "^\\s-*(evil-define-\\(?:command\\|operator\\|motion\\) +\\(\\_<[^ ()\n]+\\_>\\)" 1)
@@ -126,11 +126,11 @@ if it's callable, `apropos' otherwise."
 ;;;###autoload
 (defun +emacs-lisp|reduce-flycheck-errors-in-emacs-config ()
   "Remove `emacs-lisp-checkdoc' checker and reduce `emacs-lisp' checker
-verbosity when editing a file in `doom-private-dir' or `doom-emacs-dir'."
+verbosity when editing a file in `enfer-private-dir' or `enfer-emacs-dir'."
   (when (and (bound-and-true-p flycheck-mode)
              (eq major-mode 'emacs-lisp-mode)
              (or (not buffer-file-name)
-                 (cl-loop for dir in (list doom-emacs-dir doom-private-dir)
+                 (cl-loop for dir in (list enfer-emacs-dir enfer-private-dir)
                           if (file-in-directory-p buffer-file-name dir)
                           return t)))
     (add-to-list (make-local-variable 'flycheck-disabled-checkers)
@@ -139,8 +139,8 @@ verbosity when editing a file in `doom-private-dir' or `doom-emacs-dir'."
          (concat "(progn "
                  (prin1-to-string
                   `(progn
-                     (setq doom-modules ',doom-modules
-                           doom-disabled-packages ',doom-disabled-packages)
+                     (setq enfer-modules ',enfer-modules
+                           enfer-disabled-packages ',enfer-disabled-packages)
                      (ignore-errors (load ,user-init-file t t))
                      (setq byte-compile-warnings
                            '(obsolete cl-functions
