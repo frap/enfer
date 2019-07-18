@@ -46,16 +46,16 @@
 
   ;; Remove unused segments & extra padding
   (enfer-modeline-def-modeline 'main
-    '(bar window-number matches buffer-info remote-host buffer-position selection-info)
-    '(objed-state misc-info persp-name irc mu4e github debug input-method buffer-encoding lsp major-mode process vcs checker))
+                               '(bar window-number matches buffer-info remote-host buffer-position selection-info)
+                               '(objed-state misc-info persp-name irc mu4e github debug input-method buffer-encoding lsp major-mode process vcs checker))
 
   (enfer-modeline-def-modeline 'special
-    '(bar window-number matches buffer-info-simple buffer-position selection-info)
-    '(objed-state misc-info persp-name debug input-method irc-buffers buffer-encoding lsp major-mode process checker))
+                               '(bar window-number matches buffer-info-simple buffer-position selection-info)
+                               '(objed-state misc-info persp-name debug input-method irc-buffers buffer-encoding lsp major-mode process checker))
 
   (enfer-modeline-def-modeline 'project
-    '(bar window-number buffer-default-directory)
-    '(misc-info mu4e github debug fancy-battery " " major-mode process))
+                               '(bar window-number buffer-default-directory)
+                               '(misc-info mu4e github debug fancy-battery " " major-mode process))
 
   ;; Some functions modify the buffer, causing the modeline to show a false
   ;; modified state, so we try to force them to behave.
@@ -69,7 +69,3 @@
 
 (def-package! anzu
   :after-call isearch-mode)
-
-(def-package! evil-anzu
-  :when (featurep! :editor evil)
-  :after-call (evil-ex-start-search evil-ex-start-word-search evil-ex-search-activate-highlight))

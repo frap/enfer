@@ -452,7 +452,7 @@ directory path). If omitted, the lookup is relative to either `load-file-name',
 If NOERROR is non-nil, don't throw an error if the file doesn't exist."
   (unless path
     (setq path (or (DIR!)
-                   (error "Could not detect path to look for '%s' in"
+                   (error "N'a pas pu détecter le chemin '%s' dans"
                           filename))))
   (let ((file (if path `(expand-file-name ,filename ,path) filename)))
     `(condition-case e

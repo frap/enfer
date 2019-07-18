@@ -1,12 +1,13 @@
 ;;; core/autoload/hydras.el -*- lexical-binding: t; -*-
 
 ;;;###autoload (autoload 'enfer-text-zoom-hydra/body "core/autoload/hydras" nil t)
-(defhydra enfer-text-zoom-hydra (:hint t :color red)
+(defhydra enfer-text-zoom-hydra  (:hint t :color red)
   "
-      Text zoom: _j_:zoom in, _k_:zoom out, _0_:reset
+      Text zoom: _+_:zoom in, _-_:zoom out, _0_:reset
 "
-  ("j" enfer/increase-font-size "in")
-  ("k" enfer/decrease-font-size "out")
+  (global-map "C-c")
+  ("+" enfer/increase-font-size "in")
+  ("-" enfer/decrease-font-size "out")
   ("0" enfer/reset-font-size "reset"))
 
 ;;;###autoload (autoload 'enfer-window-nav-hydra/body "core/autoload/hydras" nil t)

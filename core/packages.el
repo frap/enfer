@@ -43,12 +43,12 @@
 (package! general)
 (package! which-key)
 (package! hydra)
-(package! pcre2el)
+
 (package! visual-regexp-steroids
           :recipe (:fetcher github  :repo "benma/visual-regexp-steroids.el"  :files ("visual-regexp-steroids.el")))
 
 ;; core-packages.el
-;;(package! gnu-elpa-keyring-update :recipe (gnu-elpa-keyring-update :fetcher url :url "https://elpa.gnu.org/packages/gnu-elpa-keyring-update.html"))
+(package! gnu-elpa-keyring-update :recipe (gnu-elpa-keyring-update :fetcher url :url "https://elpa.gnu.org/packages/gnu-elpa-keyring-update.html"))
 
 ;; autoload/debug.el
 (package! esup)

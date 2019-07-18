@@ -15,7 +15,7 @@ DEBUG envvar will enable this at startup.")
 ;;
 ;;; Constants
 
-(defconst enfer-version "2.0.9"
+(defconst enfer-version "0.0.7"
   "Current version of Enfer Emacs.")
 
 (defconst EMACS26+ (> emacs-major-version 25))
@@ -136,12 +136,12 @@ Enfer was setup, which may cause problems.")
 ;;
 ;;; Custom error types
 
-(define-error 'enfer-error "Error in Enfer Emacs core")
-(define-error 'enfer-hook-error "Error in a Enfer startup hook" 'enfer-error)
-(define-error 'enfer-autoload-error "Error in an autoloads file" 'enfer-error)
-(define-error 'enfer-module-error "Error in a Enfer module" 'enfer-error)
-(define-error 'enfer-private-error "Error in private config" 'enfer-error)
-(define-error 'enfer-package-error "Error with packages" 'enfer-error)
+(define-error 'enfer-error "Erreur dans Enfer Emacs core")
+(define-error 'enfer-hook-error "Erreur dans un Enfer startup hook" 'enfer-error)
+(define-error 'enfer-autoload-error "Erreur dans un autoloads file" 'enfer-error)
+(define-error 'enfer-module-error "Erreur dans un Enfer module" 'enfer-error)
+(define-error 'enfer-private-error "Erreur dans private config" 'enfer-error)
+(define-error 'enfer-package-error "Erreur avec packages" 'enfer-error)
 
 
 ;;
@@ -356,7 +356,7 @@ If this is a daemon session, load them all immediately instead."
 issues easier.
 
 Meant to be used with `run-hook-wrapped'."
-  (enfer-log "Running enfer hook: %s" hook)
+  (enfer-log "Exécuter une enfer hook: %s" hook)
   (condition-case e
       (funcall hook)
     ((debug error)
@@ -383,7 +383,7 @@ Meant to be used with `run-hook-wrapped'."
            enfer--last-emacs-version
            emacs-version))
          (delete-file enfer--last-emacs-file))
-        (noninteractive (error "Aborting"))
+        (noninteractive (error "Abandonner!"))
         ((kill-emacs))))
 
 (defun enfer-ensure-core-directories-exist ()
@@ -399,7 +399,7 @@ they were loaded at startup.
 
 If RETURN-P, return the message as a string instead of displaying it."
   (funcall (if return-p #'format #'message)
-           "Enfer loaded %s packages across %d modules in %.03fs"
+           "Enfer chargée %s pacquets sur %d modules dans %.03fs"
            (length package-activated-list)
            (if enfer-modules (hash-table-count enfer-modules) 0)
            (or enfer-init-time
@@ -424,7 +424,7 @@ in interactive sessions, nil otherwise (but logs a warning)."
       (load (file-name-sans-extension file) 'noerror 'nomessage)
     ((debug error)
      (if noninteractive
-         (message "Autoload file warning: %s -> %s" (car e) (error-message-string e))
+         (message "Autoload avertissement de fichier: %s -> %s" (car e) (error-message-string e))
        (signal 'enfer-autoload-error (list (file-name-nondirectory file) e))))))
 
 (defun enfer-load-env-vars (file)
@@ -503,7 +503,7 @@ to least)."
       (enfer-ensure-core-packages)
 
       (unless (or force-p noninteractive)
-        (user-error "Your enfer autoloads are missing! Run `bin/enfer refresh' to regenerate them")))
+        (user-error "Votre enfer autoloads sont manquantes! Exécuter `bin/enfer refresh' pour les régénérer")))
 
     ;; Loads `enfer-package-autoload-file', which loads a concatenated package
     ;; autoloads file and caches `load-path', `auto-mode-alist',
@@ -513,7 +513,7 @@ to least)."
       (unless (or force-p
                   (enfer-initialize-autoloads enfer-package-autoload-file)
                   noninteractive)
-        (user-error "Your package autoloads are missing! Run `bin/enfer refresh' to regenerate them")))
+        (user-error "Votre package autoloads sont manquantes! Exécuter `bin/enfer refresh' pour les régénérer")))
 
     ;; Load shell environment
     (unless noninteractive

@@ -85,7 +85,5 @@ decrease this. If you experience stuttering, increase this.")
 
 (require 'core (concat user-emacs-directory "core/core"))
 
-
-
 (provide 'init)
-;;; init/el ends here
+;;; enfer init.el ends here
