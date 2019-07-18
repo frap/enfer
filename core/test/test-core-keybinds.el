@@ -12,10 +12,10 @@
 
 (describe "core/keybinds"
   (describe "map!"
-    :var (doom--map-evil-p doom-map-states)
+    :var (enfer--map-evil-p enfer-map-states)
     (before-each
-      (setq doom--map-evil-p t
-            doom-map-states '((:n . normal)
+      (setq enfer--map-evil-p t
+            enfer-map-states '((:n . normal)
                               (:v . visual)
                               (:i . insert)
                               (:e . emacs)
@@ -28,7 +28,7 @@
         (expect '(map! "C-." #'a) :to-expand-into '(general-define-key "C-." #'a)))
 
       (it "binds a key in one evil state"
-        (dolist (state doom-map-states)
+        (dolist (state enfer-map-states)
           (expect `(map! ,(car state) "C-." #'a)
                   :to-expand-into
                   `(general-define-key :states ',(cdr state) "C-." #'a))))
@@ -54,7 +54,7 @@
                 '(general-define-key "C-." #'a "C-," #'b "C-/" #'c)))
 
       (it "binds multiple keybinds in an evil state and preserve order"
-        (dolist (state doom-map-states)
+        (dolist (state enfer-map-states)
           (expect `(map! ,(car state) "a" #'a
                          ,(car state) "b" #'b
                          ,(car state) "c" #'c)
@@ -178,7 +178,7 @@
       (describe ":when/:unless"
         (it "wraps keys in a conditional block"
           (dolist (prop '(:when :unless))
-            (let ((prop-fn (intern (doom-keyword-name prop))))
+            (let ((prop-fn (intern (enfer-keyword-name prop))))
               (expect `(map! ,prop t "a" #'a "b" #'b)
                       :to-expand-into
                       `(,prop-fn t (general-define-key "a" #'a "b" #'b)))
@@ -197,13 +197,13 @@
         (it "uses leader definer"
           (expect '(map! :leader "a" #'a "b" #'b)
                   :to-expand-into
-                  '(doom--define-leader-key "a" #'a "b" #'b)))
+                  '(enfer--define-leader-key "a" #'a "b" #'b)))
 
         (it "it persists for nested keys"
           (expect '(map! :leader "a" #'a ("b" #'b))
                   :to-expand-into
-                  '(progn (doom--define-leader-key "a" #'a)
-                          (doom--define-leader-key "b" #'b)))))
+                  '(progn (enfer--define-leader-key "a" #'a)
+                          (enfer--define-leader-key "b" #'b)))))
 
       (describe ":localleader"
         (it "uses localleader definer"

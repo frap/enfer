@@ -4,14 +4,13 @@
 (require 'core-ui)
 
 (describe "core/ui"
-  (describe "doom|protect-fallback-buffer"
+  (describe "enfer|protect-fallback-buffer"
     :var (kill-buffer-query-functions a b)
     (before-all
-      (setq kill-buffer-query-functions '(doom|protect-fallback-buffer)))
+      (setq kill-buffer-query-functions '(enfer|protect-fallback-buffer)))
 
     (it "should kill other buffers"
       (expect (kill-buffer (get-buffer-create "a"))))
 
     (it "shouldn't kill the fallback buffer"
-      (expect (not (kill-buffer (doom-fallback-buffer)))))))
-
+      (expect (not (kill-buffer (enfer-fallback-buffer)))))))

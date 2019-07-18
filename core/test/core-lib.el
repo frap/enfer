@@ -3,38 +3,38 @@
 
 ;; --- Helpers ----------------------------
 
-;; `doom--resolve-path-forms'
+;; `enfer--resolve-path-forms'
 (def-test! resolve-path-forms
   (should
-   (equal (doom--resolve-path-forms '(and "fileA" "fileB"))
-          '(and (file-exists-p (expand-file-name "fileA" (doom-project-root)))
-                (file-exists-p (expand-file-name "fileB" (doom-project-root)))))))
+   (equal (enfer--resolve-path-forms '(and "fileA" "fileB"))
+          '(and (file-exists-p (expand-file-name "fileA" (enfer-project-root)))
+                (file-exists-p (expand-file-name "fileB" (enfer-project-root)))))))
 
-;; `doom--resolve-hook-forms'
+;; `enfer--resolve-hook-forms'
 (def-test! resolve-hook-forms
-  (should (equal (doom--resolve-hook-forms '(js2-mode haskell-mode))
+  (should (equal (enfer--resolve-hook-forms '(js2-mode haskell-mode))
                  '(js2-mode-hook haskell-mode-hook)))
-  (should (equal (doom--resolve-hook-forms '(quote (js2-mode-hook haskell-mode-hook)))
+  (should (equal (enfer--resolve-hook-forms '(quote (js2-mode-hook haskell-mode-hook)))
                  '(js2-mode-hook haskell-mode-hook))))
 
-;; `doom-unquote'
+;; `enfer-unquote'
 (def-test! unquote
-  (should (equal (doom-unquote '(quote (a b c))) '(a b c)))
+  (should (equal (enfer-unquote '(quote (a b c))) '(a b c)))
   ;; nested
-  (should (equal (doom-unquote '(quote (quote (a b c)))) '(a b c)))
+  (should (equal (enfer-unquote '(quote (quote (a b c)))) '(a b c)))
   ;; sub-quote
-  (should (equal (doom-unquote '(quote (a (quote b) c))) '(a (quote b) c)))
+  (should (equal (enfer-unquote '(quote (a (quote b) c))) '(a (quote b) c)))
   ;; function
-  (should (equal (doom-unquote '(function a)) 'a)))
+  (should (equal (enfer-unquote '(function a)) 'a)))
 
-;; `doom-enlist'
+;; `enfer-enlist'
 (def-test! enlist
-  (should (equal (doom-enlist 'a) '(a)))
-  (should (equal (doom-enlist '(a)) '(a))))
+  (should (equal (enfer-enlist 'a) '(a)))
+  (should (equal (enfer-enlist '(a)) '(a))))
 
-;; `doom-resolve-vim-path'
+;; `enfer-resolve-vim-path'
 (def-test! resolve-vim-path
-  (cl-flet ((do-it #'doom-resolve-vim-path))
+  (cl-flet ((do-it #'enfer-resolve-vim-path))
     ;; file modifiers
     (let ((buffer-file-name  "~/.emacs.d/test/modules/feature/test-evil.el")
           (default-directory "~/.emacs.d/test/modules/"))
@@ -149,9 +149,9 @@
 
 (def-test! set
   (eval-and-compile
-    (let (doom-settings)
+    (let (enfer-settings)
       (def-setting! :-test-setting (x) `(setq result ,x))
-      (should (assq :-test-setting doom-settings))
+      (should (assq :-test-setting enfer-settings))
       (let ((inhibit-message t)
             result)
         (set! :-test-setting t)

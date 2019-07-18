@@ -1,7 +1,7 @@
 ;; -*- no-byte-compile: t; -*-
 ;;; core/test/test-autoload-help.el
 
-;; (load! "autoload/help" doom-core-dir)
+;; (load! "autoload/help" enfer-core-dir)
 
 ;;
 ;; (describe "core/autoload/help"

@@ -3,9 +3,9 @@
 
 (describe "core/autoload/message"
   (describe "format!"
-    :var (doom-message-backend)
+    :var (enfer-message-backend)
     (before-all
-      (setq doom-message-backend 'ansi))
+      (setq enfer-message-backend 'ansi))
 
     (it "should be a drop-in replacement for `format'"
       (expect (format! "Hello %s" "World")
@@ -16,7 +16,7 @@
               :to-equal "[31mHello World[0m"))
 
     (it "supports text properties in interactive sessions"
-      (let ((doom-message-backend 'text-properties))
+      (let ((enfer-message-backend 'text-properties))
         (expect (get-text-property 0 'face (format! (red "Hello %s") "World"))
                 :to-equal (list :foreground (face-foreground 'term-color-red)))))
 

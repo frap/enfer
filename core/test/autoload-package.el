@@ -5,16 +5,16 @@
   (package-desc-create :name name :version version :reqs reqs))
 
 (defmacro with-packages!! (packages package-descs &rest body)
-`(let* ((doom-packages-dir ,(expand-file-name "packages/" (file-name-directory load-file-name)))
-        (package-user-dir ,(expand-file-name "elpa" doom-packages-dir))
-        (quelpa-dir ,(expand-file-name "quelpa" doom-packages-dir)))
-   ;; (make-directory doom-packages-dir t)
-   (let ((doom-packages ,packages)
+`(let* ((enfer-packages-dir ,(expand-file-name "packages/" (file-name-directory load-file-name)))
+        (package-user-dir ,(expand-file-name "elpa" enfer-packages-dir))
+        (quelpa-dir ,(expand-file-name "quelpa" enfer-packages-dir)))
+   ;; (make-directory enfer-packages-dir t)
+   (let ((enfer-packages ,packages)
          (package-alist ,package-descs)
-         doom-core-packages)
-     (cl-letf (((symbol-function 'doom-initialize-packages) (lambda (&rest _))))
+         enfer-core-packages)
+     (cl-letf (((symbol-function 'enfer-initialize-packages) (lambda (&rest _))))
        ,@body))
-   ;; (delete-directory doom-packages-dir t)
+   ;; (delete-directory enfer-packages-dir t)
    ))
 
 
@@ -23,48 +23,48 @@
 ;;
 
 (def-test! backend-detection
-  (let ((package-alist `((doom-dummy ,(-pkg 'doom-dummy '(20160405 1234)))))
-        (quelpa-cache '((doom-quelpa-dummy :fetcher github :repo "hlissner/does-not-exist")))
+  (let ((package-alist `((enfer-dummy ,(-pkg 'enfer-dummy '(20160405 1234)))))
+        (quelpa-cache '((enfer-quelpa-dummy :fetcher github :repo "hlissner/does-not-exist")))
         (quelpa-initialized-p t))
-    (should (eq (doom-package-backend 'doom-dummy) 'elpa))
-    (should (eq (doom-package-backend 'doom-quelpa-dummy) 'quelpa))
-    (should (eq (doom-package-backend 'org) 'emacs))))
+    (should (eq (enfer-package-backend 'enfer-dummy) 'elpa))
+    (should (eq (enfer-package-backend 'enfer-quelpa-dummy) 'quelpa))
+    (should (eq (enfer-package-backend 'org) 'emacs))))
 
 (def-test! elpa-outdated-detection
-  (let* ((doom--last-refresh (current-time))
+  (let* ((enfer--last-refresh (current-time))
          (package-alist
-          `((doom-dummy ,(-pkg 'doom-dummy '(20160405 1234)))))
+          `((enfer-dummy ,(-pkg 'enfer-dummy '(20160405 1234)))))
          (package-archive-contents
-          `((doom-dummy ,(-pkg 'doom-dummy '(20170405 1234))))))
+          `((enfer-dummy ,(-pkg 'enfer-dummy '(20170405 1234))))))
     (cl-letf (((symbol-function 'package-refresh-contents) (lambda (&rest _))))
-      (should (equal (doom-package-outdated-p 'doom-dummy)
-                     '(doom-dummy (20160405 1234) (20170405 1234)))))))
+      (should (equal (enfer-package-outdated-p 'enfer-dummy)
+                     '(enfer-dummy (20160405 1234) (20170405 1234)))))))
 
 ;; TODO quelpa-outdated-detection
 
 (def-test! get-packages
   (let ((quelpa-initialized-p t))
     (with-packages!!
-     '((doom-dummy))
-     '((doom-dummy          nil)
-       (doom-dummy-unwanted nil)
-       (doom-dummy-dep      nil))
-     (should (equal (doom-get-packages) '((doom-dummy)))))))
+     '((enfer-dummy))
+     '((enfer-dummy          nil)
+       (enfer-dummy-unwanted nil)
+       (enfer-dummy-dep      nil))
+     (should (equal (enfer-get-packages) '((enfer-dummy)))))))
 
 (def-test! orphaned-packages
-  "Test `doom-get-orphaned-packages', which gets a list of packages that are
+  "Test `enfer-get-orphaned-packages', which gets a list of packages that are
 no longer enabled or depended on."
   (with-packages!!
-   '((doom-dummy))
-   `((doom-dummy          ,(-pkg 'doom-dummy '(20160405 1234) '((doom-dummy-dep (1 0)))))
-     (doom-dummy-unwanted ,(-pkg 'doom-dummy-unwanted '(20160601 1234)))
-     (doom-dummy-dep      ,(-pkg 'doom-dummy-dep '(20160301 1234))))
-   (should (equal (doom-get-orphaned-packages) '(doom-dummy-unwanted)))))
+   '((enfer-dummy))
+   `((enfer-dummy          ,(-pkg 'enfer-dummy '(20160405 1234) '((enfer-dummy-dep (1 0)))))
+     (enfer-dummy-unwanted ,(-pkg 'enfer-dummy-unwanted '(20160601 1234)))
+     (enfer-dummy-dep      ,(-pkg 'enfer-dummy-dep '(20160301 1234))))
+   (should (equal (enfer-get-orphaned-packages) '(enfer-dummy-unwanted)))))
 
 (def-test! missing-packages
-  "Test `doom-get-missing-packages, which gets a list of enabled packages that
+  "Test `enfer-get-missing-packages, which gets a list of enabled packages that
 aren't installed."
   (with-packages!!
-   '((doom-dummy) (doom-dummy-installed))
-   `((doom-dummy-installed ,(-pkg 'doom-dummy-installed '(20160405 1234))))
-   (should (equal (doom-get-missing-packages) '((doom-dummy))))))
+   '((enfer-dummy) (enfer-dummy-installed))
+   `((enfer-dummy-installed ,(-pkg 'enfer-dummy-installed '(20160405 1234))))
+   (should (equal (enfer-get-missing-packages) '((enfer-dummy))))))
