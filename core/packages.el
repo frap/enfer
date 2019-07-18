@@ -35,41 +35,21 @@
 ;; core-projects.el
 (package! projectile)
 
+;; cli/test.el
+(package! buttercup)
+
 ;; core-keybinds.el
 (package! bind-key)
 (package! general)
 (package! which-key)
 (package! hydra)
 (package! pcre2el)
-(package! visual-regex-steroids
-:recipe (visual-regex-steroids :fetcher url :url "https://github.com/benma/visual-regexp-steroids.el/blob/master/visual-regexp-steroids.el"))
+(package! visual-regexp-steroids
+          :recipe (:fetcher github  :repo "benma/visual-regexp-steroids.el"  :files ("visual-regexp-steroids.el")))
 
 ;; core-packages.el
 ;;(package! gnu-elpa-keyring-update :recipe (gnu-elpa-keyring-update :fetcher url :url "https://elpa.gnu.org/packages/gnu-elpa-keyring-update.html"))
 
-;; core-org.el
-(when-let (orglib (locate-library "org" nil enfer-site-load-path))
-  (setq load-path (delete (substring (file-name-directory orglib) 0 -1)
-                          load-path)))
-(package! org-plus-contrib) ; install cutting-edge version of org-mode
-(package! org :ignore t)    ; ignore org on ELPA, if possible
-(package! toc-org)
-(package! org-bullets :recipe (:fetcher github :repo "Kaligule/org-bullets"))
-(package! htmlize)
-(package! ox-clip)
-(package! org-yt :recipe (:fetcher github :repo "TobiasZawada/org-yt"))
-
-;;; Babel
-(package! ob-async)
-(when (featurep! :lang rust)
-  (package! ob-rust))
-(when (featurep! :lang clojure)
-  (package! ob-clojurescript))
-(package! org-gcal)
-(package! org-pomodoro)
-(package! outshine)
 ;; autoload/debug.el
 (package! esup)
 
-;; cli/test.el
-(package! buttercup)

@@ -528,7 +528,6 @@ to least)."
     (require 'core-ui)
     (require 'core-projects)
     (require 'core-editor)
-    (require 'core-org)
     ))
 
 
