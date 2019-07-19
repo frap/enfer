@@ -1,4 +1,4 @@
-;;; ui/doom-dashboard/config.el -*- lexical-binding: t; -*-
+;;; ui/enfer-dashboard/config.el -*- lexical-binding: t; -*-
 
 (defvar +enfer-dashboard-name "*enfer*"
   "The name to use for the dashboard buffer.")

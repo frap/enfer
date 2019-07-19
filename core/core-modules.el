@@ -32,7 +32,7 @@
             (hideshow (:editor fold))
             (eshell (:term eshell))
             (term (:term term)))
-    (:ui (doom-modeline (:ui modeline))
+    (:ui (enfer-modeline (:ui modeline))
          (fci (:ui fill-column))
          (evil-goggles (:ui ophints)))
     (:app (email (:email mu4e))

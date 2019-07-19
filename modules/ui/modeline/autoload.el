@@ -1,6 +1,9 @@
 ;;; ui/modeline/autoload/modeline.el -*- lexical-binding: t; -*-
 
 ;;;###autodef
+(defalias 'doom-modeline #'enfer-modeline)
+
+;;;###autodef
 (defalias 'def-modeline-format! #'enfer-modeline-def-modeline)
 
 ;;;###autodef
