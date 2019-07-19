@@ -22,6 +22,9 @@ Emacs.")
              projectile-project-name
              projectile-project-p
              projectile-add-known-project) ; TODO PR autoload upstream
+  :bind (("C-c p s" . projectile-ag)
+         ("C-c p g" . projectile-grep))
+  :delight '(:eval (concat "𝓟" (projectile-project-name)))
   :init
   (setq projectile-cache-file (concat enfer-cache-dir "projectile.cache")
         projectile-enable-caching (not noninteractive)
@@ -35,7 +38,7 @@ Emacs.")
         projectile-sort-order 'recentf
         projectile-use-git-grep t) ; use git-grep for text searches
 
-  (global-set-key [remap evil-jump-to-tag] #'projectile-find-tag)
+  ;;(global-set-key [remap evil-jump-to-tag] #'projectile-find-tag)
   (global-set-key [remap find-tag]         #'projectile-find-tag)
 
   :config
