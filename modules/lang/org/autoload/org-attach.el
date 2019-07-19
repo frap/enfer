@@ -66,7 +66,7 @@ and END (defaults to `point-min' and `point-max')."
 (defun +org-attach/find-file ()
   "Open a file from `org-attach-directory'."
   (interactive)
-  (doom-project-browse org-attach-directory))
+  (enfer-project-browse org-attach-directory))
 
 ;;;###autoload
 (defun +org-attach/file (path)

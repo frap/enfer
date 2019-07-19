@@ -542,6 +542,52 @@ compelling reason, so..."
 ;;
 ;;; Bootstrap
 
+ (defun ha/org-return (&optional ignore)
+       "Add new list item, heading or table row with RET.
+     A double return on an empty element deletes it.
+     Use a prefix arg to get regular RET. "
+       (interactive "P")
+       (if ignore
+           (org-return)
+         (cond
+          ;; Open links like usual
+          ((eq 'link (car (org-element-context)))
+           (org-return))
+          ;; lists end with two blank lines, so we need to make sure we are also not
+          ;; at the beginning of a line to avoid a loop where a new entry gets
+          ;; created with only one blank line.
+          ((and (org-in-item-p) (not (bolp)))
+           (if (org-element-property :contents-begin (org-element-context))
+               (org-insert-heading)
+             (beginning-of-line)
+             (setf (buffer-substring
+                    (line-beginning-position) (line-end-position)) "")
+             (org-return)))
+          ((org-at-heading-p)
+           (if (not (string= "" (org-element-property :title (org-element-context))))
+               (progn (org-end-of-meta-data)
+                      (org-insert-heading))
+             (beginning-of-line)
+             (setf (buffer-substring
+                    (line-beginning-position) (line-end-position)) "")))
+          ((org-at-table-p)
+           (if (-any?
+                (lambda (x) (not (string= "" x)))
+                (nth
+                 (- (org-table-current-dline) 1)
+                 (org-table-to-lisp)))
+               (org-return)
+             ;; empty row
+             (beginning-of-line)
+             (setf (buffer-substring
+                    (line-beginning-position) (line-end-position)) "")
+             (org-return)))
+          (t
+           (org-return)))))
+
+     (define-key org-mode-map (kbd "RET")  #'ha/org-return)
+
+
 (def-package! org
   :defer-incrementally
   calendar find-func format-spec org-macs org-compat org-faces org-entities
@@ -554,7 +600,6 @@ compelling reason, so..."
                              (0 (prog1 () (compose-region (match-beginning 1) (match-end 1) "•"))))))
   :bind (("C-M-|" . indent-rigidly)
          ("C-c a" . org-agenda)
-         ("C-M-|" . indent-rigidly)
          :map org-mode-map
          ("C-c l" . org-store-link)
          ("C-c c" . org-capture)
@@ -634,6 +679,19 @@ compelling reason, so..."
   (if (featurep! +present)   (load! "contrib/present"))
 
   :config
+   (font-lock-add-keywords            ; A bit silly but my headers are now
+       'org-mode `(("^\\*+ \\(TODO\\) "  ; shorter, and that is nice canceled
+                    (1 (progn (compose-region (match-beginning 1) (match-end 1) "⚑")
+                              nil)))
+                   ("^\\*+ \\(SUIV\\) "
+                    (1 (progn (compose-region (match-beginning 1) (match-end 1) "⚐")
+                              nil)))
+                   ("^\\*+ \\(ANNU\\) "
+                    (1 (progn (compose-region (match-beginning 1) (match-end 1) "✘")
+                              nil)))
+                   ("^\\*+ \\(FINI\\) "
+                    (1 (progn (compose-region (match-beginning 1) (match-end 1) "✔")
+                              nil)))))
   (add-hook 'org-open-at-point-functions #'enfer|set-jump)
 
   ;;; Packages

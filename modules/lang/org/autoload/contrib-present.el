@@ -45,7 +45,7 @@
 ;;;###autoload
 (defun +org-present|init-org-tree-window ()
   "Set up the org window for presentation."
-  (doom/window-maximize-buffer)
+  (enfer/window-maximize-buffer)
   (let ((cwm-use-vertical-padding t)
         (cwm-frame-internal-border 110)
         (cwm-left-fringe-ratio -10)
@@ -74,7 +74,7 @@
 ;;; Helpers
 
 (defun +org-present--cleanup-org-tree-slides-mode ()
-  (unless (cl-loop for buf in (doom-buffers-in-mode 'org-mode)
+  (unless (cl-loop for buf in (enfer-buffers-in-mode 'org-mode)
                    if (buffer-local-value 'org-tree-slide-mode buf)
                    return t)
     (org-tree-slide-mode -1)
