@@ -269,22 +269,7 @@ read-only or not file-visiting."
   ;; speed boost when buffer is displayed in multiple windows.
   (setq hl-line-sticky-flag nil
         global-hl-line-sticky-flag nil)
-
-  ;; Disable `hl-line' in evil-visual mode (temporarily). `hl-line' can make the
-  ;; selection region harder to see while in evil visual mode.
-  (after! evil
-    (defvar enfer-buffer-hl-line-mode nil)
-
-    (defun enfer|disable-hl-line ()
-      (when hl-line-mode
-        (setq-local enfer-buffer-hl-line-mode t)
-        (hl-line-mode -1)))
-    (add-hook 'evil-visual-state-entry-hook #'enfer|disable-hl-line)
-
-    (defun enfer|enable-hl-line-maybe ()
-      (when enfer-buffer-hl-line-mode
-        (hl-line-mode +1)))
-    (add-hook 'evil-visual-state-exit-hook  #'enfer|enable-hl-line-maybe)))
+  )
 
 
 (def-package! winner

@@ -321,7 +321,8 @@ Call a second time to restore the original window configuration."
                (derived-mode-p 'comint-mode)
                (not (process-live-p (get-buffer-process (current-buffer)))))
       (delete-window)))
-  (add-hook '+evil-esc-hook #'enfer|popup-close-comint-buffer t))
+  ;;(add-hook '+evil-esc-hook #'enfer|popup-close-comint-buffer t)
+  )
 
 
 (after! eshell
@@ -434,23 +435,7 @@ Call a second time to restore the original window configuration."
   ;; By handing neotree over to shackle, which is better integrated into the
   ;; rest of my config (and persp-mode), this is no longer a problem.
   (set! :popup " *NeoTree*" :align neo-window-position :size neo-window-width :static t)
-
-  (defun +evil-neotree-display-fn (buf _alist)
-    "Hand neotree off to shackle."
-    (let ((win (enfer-popup-buffer buf)))
-      (setq neo-global--buffer (window-buffer win)
-            neo-global--window win)))
-  (setq neo-display-action '(+evil-neotree-display-fn))
-
-  (defun +evil|neotree-fix-popup ()
-    "Repair neotree state whenever its popup state is restored. This ensures
-that `enfer*popup-save' won't break it."
-    (when (equal (buffer-name) neo-buffer-name)
-      (setq neo-global--window (selected-window))
-      ;; Fix neotree shrinking when closing nearby vertical splits
-      (when neo-window-fixed-size
-        (enfer-resize-window neo-global--window neo-window-width t t))))
-  (add-hook 'enfer-popup-mode-hook #'+evil|neotree-fix-popup))
+)
 
 
 (after! persp-mode
