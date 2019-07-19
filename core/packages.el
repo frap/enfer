@@ -31,6 +31,8 @@
 (package! undo-tree
  :recipe (undo-tree :fetcher git :url "http://www.dr-qubit.org/git/undo-tree.git"))
 (package! ws-butler)
+(package! delight
+ :recipe (:fetcher github :repo "antonio/delight.el"))
 
 ;; core-projects.el
 (package! projectile)
@@ -48,7 +50,9 @@
           :recipe (:fetcher github  :repo "benma/visual-regexp-steroids.el"  :files ("visual-regexp-steroids.el")))
 
 ;; core-packages.el
-(package! gnu-elpa-keyring-update :recipe (gnu-elpa-keyring-update :fetcher url :url "https://elpa.gnu.org/packages/gnu-elpa-keyring-update.html"))
+(package! gnu-elpa-keyring-update
+  :recipe (:fetcher git :url "http://git.savannah.gnu.org/cgit/emacs/elpa.git"
+   :files ("*.el")))
 
 ;; autoload/debug.el
 (package! esup)
