@@ -7,4 +7,4 @@
   (package! magit-todos)
   (package! git-gutter)
   (package! evil-magit))
-  )
+  
