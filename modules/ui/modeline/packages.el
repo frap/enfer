@@ -3,3 +3,5 @@
 
 (package! doom-modeline)
 (package! anzu)
+(when (featurep! :editor evil)
+  (package! evil-anzu))
