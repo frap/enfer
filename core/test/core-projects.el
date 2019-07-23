@@ -9,7 +9,7 @@
   :minor-mode projectile-mode
   (let ((default-directory enfer-emacs-dir))
     (should (enfer-project-p)))
-  (let ((default-directory (expand-file-name "~")))
+  (let ((default-directory (expand-file-name "~")));
     (should-not (enfer-project-p))))
 
 ;; `enfer-project-p'
