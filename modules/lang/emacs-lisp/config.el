@@ -70,37 +70,11 @@ This marks a foldable marker for `outline-minor-mode' in elisp buffers.")
   ;; Recenter window after following definition
   (advice-add #'elisp-def :after #'enfer*recenter)
 
-  (map! :localleader
-        :map emacs-lisp-mode-map
-        "e" #'macrostep-expand))
+ )
 
 
 ;;
 ;;; Packages
-
-(when (featurep! :editor evil)
-  (after! macrostep
-    (evil-define-key* 'normal macrostep-keymap
-      [return]  #'macrostep-expand
-      "e"       #'macrostep-expand
-      "u"       #'macrostep-collapse
-      "c"       #'macrostep-collapse
-
-      [tab]     #'macrostep-next-macro
-      "\C-n"    #'macrostep-next-macro
-      "J"       #'macrostep-next-macro
-
-      [backtab] #'macrostep-prev-macro
-      "K"       #'macrostep-prev-macro
-      "\C-p"    #'macrostep-prev-macro
-
-      "q"       #'macrostep-collapse-all
-      "C"       #'macrostep-collapse-all)
-
-    ;; `evil-normalize-keymaps' seems to be required for macrostep or it won't
-    ;; apply for the very first invocation
-    (add-hook 'macrostep-mode-hook #'evil-normalize-keymaps)))
-
 
 ;;;###package overseer
 (autoload 'overseer-test "overseer" nil t)

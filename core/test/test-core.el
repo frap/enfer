@@ -2,7 +2,7 @@
 ;;; core/test/test-core.el
 
 (describe "core"
-  (xdescribe "initialize"
+  (xdescribe "initialise"
     :var (enfer-init-p enfer-init-modules-p enfer-private-dir)
     (before-each
       (setq enfer-init-p nil

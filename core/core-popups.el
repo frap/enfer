@@ -546,9 +546,10 @@ you came from."
     ;; Don't monopolize frame!
     (advice-add #'org-agenda :around #'enfer*suppress-delete-other-windows)
     ;; ensure quit keybindings work propertly
-    (map! :map* org-agenda-mode-map
-          :m [escape] 'org-agenda-Quit
-          :m "ESC"    'org-agenda-Quit)))
+    ;;(map! :map* org-agenda-mode-map
+    ;;      :m [escape] 'org-agenda-Quit
+    ;;      :m "ESC"    'org-agenda-Quit)
+    ))
 (add-hook 'enfer-init-hook #'enfer|init-org-popups)
 
 (provide 'core-popups)

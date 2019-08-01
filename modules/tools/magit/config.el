@@ -47,10 +47,11 @@ It is passed a user and repository name.")
   (add-to-list 'enfer-real-buffer-functions #'+magit-buffer-p nil #'eq)
 
   ;; properly kill leftover magit buffers on quit
-  (define-key magit-status-mode-map [remap magit-mode-bury-buffer] #'+magit/quit)
+  ;;(define-key magit-status-mode-map [remap magit-mode-bury-buffer] #'+magit/quit)
 
   ;; Close transient with ESC
-  (define-key transient-map [escape] #'transient-quit-one))
+  ;;(define-key transient-map [escape] #'transient-quit-one)
+  )
 
 
 (def-package! forge
@@ -70,7 +71,7 @@ It is passed a user and repository name.")
   :after magit
   :config
   (setq magit-todos-keyword-suffix "\\(?:([^)]+)\\)?:?")
-  (define-key magit-todos-section-map "j" nil)
+  ;;(define-key magit-todos-section-map "j" nil)
   (advice-add #'magit-todos-mode :around #'enfer*shut-up)
   (magit-todos-mode +1))
 

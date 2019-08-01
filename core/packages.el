@@ -50,9 +50,9 @@
           :recipe (:fetcher github  :repo "benma/visual-regexp-steroids.el"  :files ("visual-regexp-steroids.el")))
 
 ;; core-packages.el
-(package! gnu-elpa-keyring-update
-  :recipe (:fetcher git :url "http://git.savannah.gnu.org/cgit/emacs/elpa.git"
-   :files ("*.el")))
+(package! gnu-elpa-keyring-update)
+;;  :recipe (:fetcher git :url "http://git.savannah.gnu.org/cgit/emacs/elpa.git"
+;;   :files ("*.el")))
 
 ;; autoload/debug.el
 (package! esup)

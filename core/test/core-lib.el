@@ -113,4 +113,4 @@
             result)
         (set! :-test-setting t)
         (should result)
-        (set! :non-existant-setting (error "This shouldn't trigger"))))))
+        (set! :non-existant-setting (error "Cela ne devrait pas déclencher"))))))

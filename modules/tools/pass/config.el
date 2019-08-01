@@ -25,14 +25,14 @@
 
 ;; `pass'
 (after! pass
-  (set-evil-initial-state! 'pass-mode 'emacs)
   (set-popup-rule! "^\\*Password-Store" :side 'left :size 0.25 :quit nil)
-  (define-key! pass-mode-map
-    "j"    #'pass-next-entry
-    "k"    #'pass-prev-entry
-    "d"    #'pass-kill
-    "\C-j" #'pass-next-directory
-    "\C-k" #'pass-prev-directory))
+ ;; (define-key! pass-mode-map
+ ;; "j"    #'pass-next-entry
+ ;;   "k"    #'pass-prev-entry
+ ;;   "d"    #'pass-kill
+ ;;   "\C-j" #'pass-next-directory
+ ;;   "\C-k" #'pass-prev-directory)
+  )
 
 
 ;; Is built into Emacs 26+

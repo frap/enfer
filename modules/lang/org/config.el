@@ -1,5 +1,4 @@
 ;;; lang/org/config.el -*- lexical-binding: t; -*-
-
 ;;
 ;;; `org-load' hooks
 
@@ -55,7 +54,7 @@
    org-todo-keywords
    '((sequence "TODO(t)" "PROJ(p)" "|" "FINI(d)")
      (sequence "[ ](T)" "[-](P)" "[?](M)" "|" "[X](D)")
-     (sequence "SUIV(n)" "ATTE(w)" "ATTE(h)" "|" "ANNU(c)"))
+     (sequence "SUIV(n)" "ATTE(w)" "SUSP(h)" "|" "ANNU(c)"))
    org-todo-keyword-faces
    '(("[-]" :inherit (font-lock-constant-face bold))
      ("[?]" :inherit (warning bold))
@@ -585,9 +584,6 @@ compelling reason, so..."
           (t
            (org-return)))))
 
-     (define-key org-mode-map (kbd "RET")  #'ha/org-return)
-
-
 (def-package! org
   :defer-incrementally
   calendar find-func format-spec org-macs org-compat org-faces org-entities
@@ -600,9 +596,9 @@ compelling reason, so..."
                              (0 (prog1 () (compose-region (match-beginning 1) (match-end 1) "•"))))))
   :bind (("C-M-|" . indent-rigidly)
          ("C-c a" . org-agenda)
+         ("C-c c" . org-capture)
          :map org-mode-map
          ("C-c l" . org-store-link)
-         ("C-c c" . org-capture)
          ("C-c b" . org-iswitchb)
          ("C-c C-w" . org-refile)
          ("C-c j" . org-clock-goto)
@@ -614,6 +610,7 @@ compelling reason, so..."
          ("M-C-p" . org-beginning-of-item-list)
          ("C-s-f" . forward-sentence)
          ("C-s-b" . backward-sentence)
+       ;;  (kbd "RET" . ha/org-return)
          )
   :preface
   ;; Change org defaults (should be set before org loads)
